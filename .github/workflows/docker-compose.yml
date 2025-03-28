@@ -17,8 +17,17 @@ jobs:
         username: jfwang
         password: ${{ secrets.SERVER_SSH_PASSWORD }}
         script: |
-          cd /volume1/docker
-          ls
+          export PATH=$PATH:/usr/local/bin:/usr/bin:/bin
+
+          # 检查工具是否可用
+          echo "Checking Git version:"
+          git --version
+        
+          echo "Checking Docker version:"
+          docker --version
+        
+          echo "Checking Docker Compose version:"
+          docker-compose --version
           cd /volume1/docker/sourcecode 
           git clone https://github.com/jfwangncs/Nga.git
           cd Nga/src/NGA/NGA.Producer
