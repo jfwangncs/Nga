@@ -30,10 +30,9 @@ jobs:
           docker-compose --version
           cd /volume1/docker/sourcecode 
           git clone https://github.com/jfwangncs/Nga.git
-          cd Nga/src/NGA/NGA.Producer
-          sudo docker build -t jfwangncs/ngap:${{ github.run_number }} -f Dockerfile .
-          cd Nga/src/NGA/NGA.Consumer
-          sudo docker build -t jfwangncs/ngac:${{ github.run_number }} -f Dockerfile2 .
+          cd Nga/src/NGA
+          sudo docker build -t jfwangncs/ngap:${{ github.run_number }} -f NGA.Producer/Dockerfile .
+          sudo docker build -t jfwangncs/ngac:${{ github.run_number }} -f NGA.Consumer/Dockerfile .
           echo "
           version: '3'
           services:
