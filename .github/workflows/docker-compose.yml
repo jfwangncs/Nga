@@ -31,9 +31,9 @@ jobs:
           cd /volume1/docker/sourcecode 
           git clone https://github.com/jfwangncs/Nga.git
           cd Nga/src/NGA/NGA.Producer
-          docker build -t jfwangncs/ngap:${{ github.run_number }} -f Dockerfile .
+          sudo docker build -t jfwangncs/ngap:${{ github.run_number }} -f Dockerfile .
           cd Nga/src/NGA/NGA.Consumer
-          docker build -t jfwangncs/ngac:${{ github.run_number }} -f Dockerfile2 .
+          sudo docker build -t jfwangncs/ngac:${{ github.run_number }} -f Dockerfile2 .
           echo "
           version: '3'
           services:
@@ -58,5 +58,5 @@ jobs:
                 - PRODUCER_PID=-472
               restart: always
           " > /volume1/docker/yaml/nga/compose.yaml
-          docker-compose up -d
-          EOF
+          cd /volume1/docker/yaml/nga
+          sudo docker-compose up -d
