@@ -1,0 +1,51 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - "master"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps: 
+    - name: SSH into server and deploy container
+      uses: appleboy/ssh-action@master
+      with:
+        host: jfwang.xiaofengyu.com
+        port: 8033
+        username: jfwang
+        password: ${{ secrets.SERVER_SSH_PASSWORD }}
+        script: |
+          cd /volume1/docker/sourcecode 
+          git clone https://github.com/jfwangncs/Nga.git
+          cd Nga/src/NGA/NGA.Producer
+          docker build -t jfwangncs/ngap:${{ github.run_number }} -f Dockerfile .
+          cd Nga/src/NGA/NGA.Consumer
+          docker build -t jfwangncs/ngac:${{ github.run_number }} -f Dockerfile2 .
+          echo "
+          version: '3'
+          services:
+             ngac_1:
+              image: jfwangncs/ngac:${{ github.run_number }}
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+              restart: always
+            ngp_1:
+              image: jfwangncs/ngap:${{ github.run_number }}
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+                - PRODUCER_PID=-7
+              restart: always
+             ngp_2:
+              image: jfwangncs/ngap:${{ github.run_number }}
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+                - PRODUCER_PID=-472
+              restart: always
+          " > /volume1/docker/yaml/nga/compose.yaml
+          docker-compose up -d
+          EOF
