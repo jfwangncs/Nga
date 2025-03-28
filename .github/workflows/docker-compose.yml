@@ -24,8 +24,7 @@ jobs:
           cd Nga/src/NGA
           sudo docker build -t jfwangncs/ngap:${{ github.run_number }} -f NGA.Producer/Dockerfile .
           sudo docker build -t jfwangncs/ngac:${{ github.run_number }} -f NGA.Consumer/Dockerfile .
-          echo "
-          version: '3'
+          echo "version: '3'
           services:
              ngac_1:
               image: jfwangncs/ngac:${{ github.run_number }}
@@ -33,7 +32,7 @@ jobs:
                 - TZ=Asia/Shanghai
                 - ASPNETCORE_ENVIRONMENT=Production
               restart: always
-            ngp_1:
+             ngp_1:
               image: jfwangncs/ngap:${{ github.run_number }}
               environment:
                 - TZ=Asia/Shanghai
