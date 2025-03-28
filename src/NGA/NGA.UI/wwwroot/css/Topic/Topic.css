@@ -1,0 +1,31 @@
+﻿.title { font-size: 14px; font-weight: bold; font-family: 微软雅黑; color: #337ab7; vertical-align: middle !important; }
+.row { margin-left: 0px !important; margin-right: 0px !important; border: 1px solid #ddd; display: -webkit-box; display: -webkit-flex; display: -ms-flexbox; display: flex; flex-wrap: wrap; }
+.row > [class*='col-'] { display: flex; flex-direction: column; }
+.odd { background-color: #efefef; }
+.even { background-color: #f5f8fa; }
+.row .user { font-size: 12px; }
+.row .user div { margin-top: 8px; }
+.row .user .uid { color: #216a94; font-weight: bold; }
+.row .user .avatar { margin: 0.25em 0; border: 0.0833em solid #591804; }
+.row .vote { border-radius: 0.25em; -moz-border-radius: 0.2em; padding: 0 0.4em 0.05em 0.4em; line-height: 1.5em; cursor: hand; vertical-align: middle; font-family: Verdana, Tahoma, Arial, sans-serif; display: inline; font-size: 12px; width: 15px; }
+.row .content { font-size: 1.085em; font-family: 微软雅黑; border-left: 1px solid #ddd; }
+.row > div { padding-top: 10px; padding-bottom: 10px; min-height: 80px; }
+.row .content .mtle { font-size: 14px; display: inline; font-weight: bold; margin: 0; padding: 0; line-height: 2em }
+.row .content .time { float: right; font-size: 12px; padding-right: 50px; vertical-align: middle !important; }
+.row .content .mcontent { margin-top: 20px; color: #242a58; font-size: 13px; }
+.row .content .topicimg { max-width: 100%; vertical-align: bottom;}
+.sort { width: 10px; height: 10px; float: right; color: #0D3349; font-size: 10px; margin-top: -5px !important; }
+.container-fluid { height: 95%; }
+
+/*回复*/
+.quote, .dice, .lessernuke, table.quote, table.album { margin: 0.8em 0.8em 0.8em 2.3em; padding: 0.6em 0.8em; }
+.quote { background: #f2eddf; border: 1px solid #e6e1d3; }
+.block_txt_c2 { background: #e0c19e; color: #274349; }
+.block_txt { border-radius: 0.25em; -moz-border-radius: 0.2em; padding: 0 0.4em 0.05em 0.4em; line-height: 1.5em; cursor: hand; background: #591804; display: inline-block; *zoom: 1; *display: inline; }
+.block_txt_c0 { background: #591804; color: #fff8e7; }
+.silver { color: #888 }
+.xtxt, .stxt, .xxtxt { display: inline-block; font-size: inherit; transform: scale(0.75) translateY(8%); }
+.stxt { transform: scale(0.83) translateY(8%); }
+.xxtxt { transform: scale(0.583) translateY(8%); }
+.soucea { float: right; color: coral; margin-right: 20px }
+.soucea:hover { float: right; color: coral; margin-right: 20px }
