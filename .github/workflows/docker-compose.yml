@@ -22,6 +22,21 @@ jobs:
           cd /volume1/docker/sourcecode 
           git clone https://github.com/jfwangncs/Nga.git
           cd Nga/src/NGA
+
+          jq --arg mysql_conn "${{ secrets.MYSQL_CONNECTIONSTRING }}" \
+            --arg rabbitmq_pwd "${{ secrets.RABBITMQ_PASSWORD }}" \
+            --arg redis_pwd "${{ secrets.REDIS_PASSWORD }}" \
+            '.ConnectionStrings.ConnectionString = $mysql_conn |
+              .RabbitMQ.Password = $rabbitmq_pwd |
+              .Redis.Password = $redis_pwd' NGA.Consumer/appsettings.Production.json > temp.json && mv temp.json NGA.Consumer/appsettings.Production.json
+
+          jq --arg mysql_conn "${{ secrets.MYSQL_CONNECTIONSTRING }}" \
+            --arg rabbitmq_pwd "${{ secrets.RABBITMQ_PASSWORD }}" \
+            --arg redis_pwd "${{ secrets.REDIS_PASSWORD }}" \
+            '.ConnectionStrings.ConnectionString = $mysql_conn |
+              .RabbitMQ.Password = $rabbitmq_pwd |
+              .Redis.Password = $redis_pwd' NGA.Producer/appsettings.Production.json > temp.json && mv temp.json NGA.Producer/appsettings.Production.json
+
           sudo docker build -t jfwangncs/ngap:${{ github.run_number }} -f NGA.Producer/Dockerfile .
           sudo docker build -t jfwangncs/ngac:${{ github.run_number }} -f NGA.Consumer/Dockerfile .
           echo "version: '3'
