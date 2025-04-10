@@ -26,7 +26,7 @@ jobs:
           
           cd /volume1/docker/sourcecode 
           git clone https://github.com/jfwangncs/Nga.git
-          cd Nga/src/NGA
+          cd Nga/src
 
           jq --arg mysql_conn "${{ secrets.MYSQL_CONNECTIONSTRING }}" \
             --arg rabbitmq_pwd "${{ secrets.RABBITMQ_PASSWORD }}" \
