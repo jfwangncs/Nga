@@ -4,10 +4,10 @@ on:
     branches:
       - "master"
     paths:
-      - 'src/NGA.Producer' 
-      - 'src/NGA.Consumer'
-      - 'src/NGA.Base'
-      - 'src/NGA.Models'
+      - 'src/NGA.Producer/**' 
+      - 'src/NGA.Consumer/**'
+      - 'src/NGA.Base/**'
+      - 'src/NGA.Models/**'
 jobs:
   deploy:
     runs-on: ubuntu-latest
