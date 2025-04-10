@@ -1,0 +1,36 @@
+﻿<nav aria-label="Page navigation" class="pageNav" v-if="data.length>0" style="display: flex;align-items: center;padding: 0 0 10px 10px">
+    <ul class="pagination" v-if="totalPages<5">
+        <li v-for="item in totalPages" :class=" pageIndex==item?'active':''">
+            <a href="JavaScript:void(0)" v-on:click="paging(item)">{{item}}</a>
+        </li>
+    </ul>
+    <ul class="pagination" v-else>
+        <li>
+            <a href="JavaScript:void(0)" aria-label="Previous" v-on:click="paging( pageIndex-5>0? pageIndex-5:1)">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        <li v-if=" pageIndex-2>0">
+            <a href="JavaScript:void(0)" v-on:click="paging( pageIndex-2)">{{  pageIndex - 2}}</a>
+        </li>
+        <li v-if=" pageIndex-1>0">
+            <a href="JavaScript:void(0)" v-on:click="paging( pageIndex-1)">{{  pageIndex - 1}}</a>
+        </li>
+        <li class="active">
+            <a href="JavaScript:void(0)" v-on:click="paging( pageIndex)">{{  pageIndex}}</a>
+        </li>
+        <li v-if="Number( pageIndex)+1<=totalPages">
+            <a href="JavaScript:void(0)" v-on:click="paging(Number( pageIndex)+1)">{{ Number( pageIndex) + 1}}</a>
+        </li>
+        <li v-if="Number( pageIndex)+2<=totalPages">
+            <a href="JavaScript:void(0)" v-on:click="paging(Number( pageIndex)+2)">{{ Number( pageIndex) + 2}}</a>
+        </li>
+        <li>
+            <a href="JavaScript:void(0)" aria-label="Next"
+               v-on:click="paging(Number( pageIndex)+5>totalPages?totalPages:Number( pageIndex)+5)">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+    </ul>
+    <span style="margin:10px; font-size:12px;">总共{{totalPages}}条记录</span>
+</nav>

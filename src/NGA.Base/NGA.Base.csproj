@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+	</PropertyGroup>
+	<ItemGroup>  
+		<PackageReference Include="jfYu.Core.jfYuRequest" Version="8.1.0" /> 
+		<PackageReference Include="jfyu.Core.RabbitMQ" Version="8.0.8" /> 
+		<PackageReference Include="jfYu.Core.Redis" Version="8.1.2" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+		<PackageReference Include="System.Text.Encoding.CodePages" Version="6.0.0" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.12" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" /> 
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\NGA.Models\NGA.Models.csproj" />
+	</ItemGroup>
+</Project>

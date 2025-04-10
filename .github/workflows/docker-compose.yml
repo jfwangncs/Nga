@@ -1,0 +1,91 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - "master"
+    paths:
+      - 'src/NGA.Producer' 
+      - 'src/NGA.Consumer'
+      - 'src/NGA.Base'
+      - 'src/NGA.Models'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps: 
+    - name: SSH into server and deploy container
+      uses: appleboy/ssh-action@master
+      with:
+        host: jfwang.xiaofengyu.com
+        port: 8033
+        username: jfwang
+        password: ${{ secrets.SERVER_SSH_PASSWORD }}
+        script: |
+          export PATH=$PATH:/usr/local/bin:/usr/bin:/bin
+          
+          cd /volume1/docker/sourcecode 
+          git clone https://github.com/jfwangncs/Nga.git
+          cd Nga/src/NGA
+
+          jq --arg mysql_conn "${{ secrets.MYSQL_CONNECTIONSTRING }}" \
+            --arg rabbitmq_pwd "${{ secrets.RABBITMQ_PASSWORD }}" \
+            --arg redis_pwd "${{ secrets.REDIS_PASSWORD }}" \
+            '.ConnectionStrings.ConnectionString = $mysql_conn |
+              .RabbitMQ.Password = $rabbitmq_pwd |
+              .Redis.Password = $redis_pwd' NGA.Consumer/appsettings.Production.json > temp.json && mv temp.json NGA.Consumer/appsettings.Production.json
+
+          jq --arg mysql_conn "${{ secrets.MYSQL_CONNECTIONSTRING }}" \
+            --arg rabbitmq_pwd "${{ secrets.RABBITMQ_PASSWORD }}" \
+            --arg redis_pwd "${{ secrets.REDIS_PASSWORD }}" \
+            '.ConnectionStrings.ConnectionString = $mysql_conn |
+              .RabbitMQ.Password = $rabbitmq_pwd |
+              .Redis.Password = $redis_pwd' NGA.Producer/appsettings.Production.json > temp.json && mv temp.json NGA.Producer/appsettings.Production.json
+
+          sudo docker build -t jfwangncs/ngap:${{ github.run_number }} -f NGA.Producer/Dockerfile .
+          sudo docker build -t jfwangncs/ngac:${{ github.run_number }} -f NGA.Consumer/Dockerfile .
+          sudo rm /volume1/docker/compose/nga/compose.yaml
+          echo "version: '3'
+          services:
+             ngac1:
+              image: jfwangncs/ngac:${{ github.run_number }}
+              container_name: ngac1  
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+              restart: always
+             ngac2:
+              image: jfwangncs/ngac:${{ github.run_number }}
+              container_name: ngac2
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+              restart: always
+             ngac3:
+              image: jfwangncs/ngac:${{ github.run_number }}
+              container_name: ngac3
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+              restart: always
+             ngp_7:
+              image: jfwangncs/ngap:${{ github.run_number }}
+              container_name: ngp_7
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+                - PRODUCER_PID=-7
+              restart: always
+             ngp_472:
+              image: jfwangncs/ngap:${{ github.run_number }}
+              container_name: ngp_472
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+                - PRODUCER_PID=472
+              restart: always
+          " > /volume1/docker/compose/nga/compose.yaml
+          cd /volume1/docker/compose/nga
+          sudo docker-compose down
+          sudo docker-compose up -d
+          rm -r /volume1/docker/sourcecode/Nga
