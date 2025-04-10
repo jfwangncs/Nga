@@ -34,7 +34,6 @@ namespace NGA.Consumer
                     options.IncludeScopes = false;      // 不显示作用域信息
                     options.TimestampFormat = null;     // 不显示时间戳
                     options.UseUtcTimestamp = false;    // 不使用UTC时间
-
                 });
                 loggingBuilder.SetMinimumLevel(LogLevel.Debug);
                 loggingBuilder.AddFilter("System.Net.Http.HttpClient.*", LogLevel.Warning);
