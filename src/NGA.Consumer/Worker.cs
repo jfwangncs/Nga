@@ -1,5 +1,4 @@
-﻿using Castle.Core.Logging;
-using HtmlAgilityPack;
+﻿using HtmlAgilityPack;
 using jfYu.Core.Data.Service;
 using jfYu.Core.jfYuRequest;
 using jfYu.Core.RabbitMQ;
@@ -17,7 +16,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace NGA.Consumer
 {
@@ -68,6 +66,7 @@ namespace NGA.Consumer
                 return true;
             }
 
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             _logger.LogInformation($"{data.Tid}:{data.Title}开始");
             var reptileNum = 0;
             if (ConsumerType == "New")
@@ -82,9 +81,15 @@ namespace NGA.Consumer
                     if (result.Item2 || page > 100)
                         break;
                     page++;
+                    cts.Token.ThrowIfCancellationRequested();
 
                 } while (true);
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning($"{data.Tid}:{data.Title}超时，发回重新处理");
+                return false;
             }
             catch (Exception ex)
             {
@@ -307,7 +312,8 @@ namespace NGA.Consumer
                         _context += ("<br />" + imghtml);
                     }
                 }
-            };
+            }
+            ;
             //url替换
             Regex qariRegex = new Regex(@"\[url\].*?\[/url\]");
             MatchCollection urls = qariRegex.Matches(_context);
