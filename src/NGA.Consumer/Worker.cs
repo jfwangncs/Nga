@@ -66,7 +66,7 @@ namespace NGA.Consumer
                 return true;
             }
 
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
             _logger.LogInformation($"{data.Tid}:{data.Title}开始");
             var reptileNum = 0;
             if (ConsumerType == "New")
