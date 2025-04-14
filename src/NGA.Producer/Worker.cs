@@ -106,6 +106,8 @@ namespace NGA.Producer
                             Thread = _thread,
                             Fid = fid,
                         };
+                        if (t.Title == "帖子发布或回复时间超过限制")
+                            continue;
                         t.Tid = t.Url.Replace("/read.php?tid=", "").Trim();
                         if (CheckBlackList(t))
                         {
@@ -113,7 +115,7 @@ namespace NGA.Producer
                             if (topic == null)
                             {
                                 await _topicService.AddAsync(t);
-                                _rabbitMQService.Send("ex_topic", t);
+                                _rabbitMQService.Send("ex_topic", t.Tid);
                             }
                             else
                             {
@@ -123,7 +125,7 @@ namespace NGA.Producer
                                 topic.Replies = t.Replies;
                                 topic.LastReplyer = t.LastReplyer;
                                 await _topicService.UpdateAsync(topic);
-                                _rabbitMQService.Send("ex_topic", t);
+                                _rabbitMQService.Send("ex_topic", t.Tid);
                             }
                             _logger.LogInformation($"{t.Title}进入队列");
 

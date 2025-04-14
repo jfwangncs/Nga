@@ -36,10 +36,7 @@ namespace NGA.Consumer
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
 
-            _rabbitMQService.Receive("topic", async q =>
-            {
-                return await HandleTopicAsync(JsonConvert.DeserializeObject<Topic>(q));//处理              
-            });
+            _rabbitMQService.Receive("topic", HandleTopicAsync);
 
             await Task.Delay(Timeout.Infinite, stoppingToken);
 
@@ -48,7 +45,7 @@ namespace NGA.Consumer
         /// <summary>
         /// 准备开始
         /// </summary>     
-        protected async Task<bool> HandleTopicAsync(Topic data)
+        protected async Task<bool> HandleTopicAsync(string tid)
         {
             using var scope = _scopeFactory.CreateScope();
             _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
@@ -60,6 +57,7 @@ namespace NGA.Consumer
             _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
             Token = await _redisService.GetAsync<NGBToken>("Token");
 
+            var data = await _topicService.GetOneAsync(q => q.Tid == tid);
             if (!await _redisService.LockTakeAsync(data.Tid, TimeSpan.FromHours(1)))
             {
                 _logger.LogInformation($"{data.Tid}:{data.Title}正在采集 跳过");
@@ -67,7 +65,7 @@ namespace NGA.Consumer
             }
 
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
-            _logger.LogInformation($"{data.Tid}:{data.Title}开始");
+            _logger.LogInformation($"{data.Tid}:{data.Title}-{data.ReptileNum}开始");
             var reptileNum = 0;
             if (ConsumerType == "New")
                 reptileNum = data.ReptileNum;
@@ -78,6 +76,9 @@ namespace NGA.Consumer
                 {
                     var result = await MainAsync(data, page);
                     reptileNum = result.Item1;
+                    data.ReptileNum = reptileNum;
+                    await _topicService.UpdateAsync(data);
+                    _logger.LogInformation($"{data.Tid}:{data.Title}第{page}页");
                     if (result.Item2 || page > 100)
                         break;
                     page++;
@@ -106,9 +107,7 @@ namespace NGA.Consumer
             }
             finally
             {
-                data.ReptileNum = reptileNum;
-                await _topicService.UpdateAsync(data);
-                _logger.LogInformation($"{data.Tid}:{data.Title}结束");
+                _logger.LogInformation($"{data.Tid}:{data.Title}-{data.ReptileNum}结束");
                 await _redisService.LockReleaseAsync(data.Tid);
             }
 
