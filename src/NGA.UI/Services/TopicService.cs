@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace NGA.UI.Services
 {
-    public class TopicService : Service<Topic, DataContext>,ITopicService
+    public class TopicService : Service<Topic, DataContext>, ITopicService
     {
         public TopicService(DataContext context, ReadonlyDBContext<DataContext> readonlyDBContext) : base(context, readonlyDBContext)
         {
@@ -25,7 +25,7 @@ namespace NGA.UI.Services
                 })
                 .OrderByDescending(x => x.LatestUpdateTime);
 
-            var latestTopics = ReadonlyContext.Topics
+            var latestTopics = ReadonlyContext.Topics.Where(q => q.Title.Contains(key))
                        .Join(
                            latestReplays, // 关联最新的回复记录
                            topic => topic.Tid, // Topics 表的 Tid

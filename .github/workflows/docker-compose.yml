@@ -2,7 +2,12 @@ name: Deploy
 on:
   push:
     branches:
-      - "master"
+      - "master" 
+    paths:
+      - 'src/NGA.Producer/**' 
+      - 'src/NGA.Consumer/**'
+      - 'src/NGA.Base/**'
+      - 'src/NGA.Models/**'
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -17,6 +22,8 @@ jobs:
         username: jfwang
         password: ${{ secrets.SERVER_SSH_PASSWORD }}
         script: |
+          current_run_number=${{ github.run_number }}
+          previous_run_number=$((current_run_number - 1))
           export PATH=$PATH:/usr/local/bin:/usr/bin:/bin
           
           cd /volume1/docker/sourcecode 
@@ -83,4 +90,6 @@ jobs:
           cd /volume1/docker/compose/nga
           sudo docker-compose down
           sudo docker-compose up -d
+          sudo docker image rm jfwangncs/ngap:$previous_run_number
+          sudo docker image rm jfwangncs/ngac:$previous_run_number
           rm -r /volume1/docker/sourcecode/Nga
