@@ -5,7 +5,7 @@
 	</PropertyGroup>
 	<ItemGroup>  
 		<PackageReference Include="jfYu.Core.jfYuRequest" Version="8.1.0" /> 
-		<PackageReference Include="jfyu.Core.RabbitMQ" Version="8.1.0" /> 
+		<PackageReference Include="jfyu.Core.RabbitMQ" Version="8.1.1" /> 
 		<PackageReference Include="jfYu.Core.Redis" Version="8.1.2" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
 		<PackageReference Include="System.Text.Encoding.CodePages" Version="6.0.0" />
