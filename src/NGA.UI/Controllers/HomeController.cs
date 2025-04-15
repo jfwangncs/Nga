@@ -2,6 +2,7 @@
 using jfYu.Core.Data.Service;
 using Microsoft.AspNetCore.Mvc;
 using NGA.Models;
+using NGA.UI.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,13 +13,13 @@ namespace NGA.UI.Controllers
     [Microsoft.AspNetCore.Authorization.AllowAnonymous]
     public class HomeController : Controller
     {
-        private readonly IService<Topic, DataContext> _topicService;
+        private readonly ITopicService _topicService;
 
         private readonly IService<Replay, DataContext> _replayService;
 
         private readonly IService<User, DataContext> _userService;
 
-        public HomeController(IService<Topic, DataContext> topicService, IService<Replay, DataContext> replayService, IService<User, DataContext> userService)
+        public HomeController(ITopicService topicService, IService<Replay, DataContext> replayService, IService<User, DataContext> userService)
         {
             _topicService = topicService;
             _replayService = replayService;
@@ -97,7 +98,7 @@ namespace NGA.UI.Controllers
         public async Task<JsonResult> GetList(string key, int pageIndex = 1)
         {
 
-            var result = (await _topicService.GetListAsync(q => q.Title.Contains(key) || string.IsNullOrEmpty(key))).OrderByDescending(q => q.UpdatedTime).AsQueryable().ToPaged(pageIndex);
+            var result = await _topicService.GetLatestTopicsWithReplies(key, pageIndex);
             foreach (var item in result.Data)
             {
                 item.Title = item.Title.Replace("新闻", "XW").Replace("讨论", "TL").Replace("转帖", "ZT");

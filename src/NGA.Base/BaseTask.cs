@@ -25,22 +25,14 @@ namespace NGA.Base
         protected NGBToken? Token;
         protected CookieCollection authcookies = [];
 
-        public readonly IServiceScopeFactory _scopeFactory;
-
-        protected IRabbitMQService _rabbitMQService;
-        protected IService<Log, DataContext> _logService;
-        protected IService<Topic, DataContext> _topicService;
-        protected IService<Replay, DataContext> _replayService;
-        protected IService<Black, DataContext> _blackService;
-        protected IService<ReplayHis, DataContext> _replayHisService;
-        protected IService<User, DataContext> _userService;
+        public readonly IServiceScopeFactory _scopeFactory;    
+         
         protected IRedisService _redisService;
         protected LogFilter _logFilter = new LogFilter() { LoggingFields = JfYuLoggingFields.None, RequestFilter = z => z, ResponseFilter = z => "" };
         private ILogger<JfYuHttpRequest> _logger1;
-        protected BaseTask(IServiceScopeFactory scopeFactory, IRabbitMQService rabbitMQService, ILogger<JfYuHttpRequest> logger1)
+        protected BaseTask(IServiceScopeFactory scopeFactory, ILogger<JfYuHttpRequest> logger1)
         {
-            _scopeFactory = scopeFactory;
-            _rabbitMQService = rabbitMQService;
+            _scopeFactory = scopeFactory;        
             _logger1 = logger1;
         }
 
@@ -60,6 +52,9 @@ namespace NGA.Base
         }
         protected async Task WriteLogAsync(Log l)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
+
             var log = await _logService.GetOneAsync(q => q.Info == l.Info && q.Msg == l.Msg && q.Type == l.Type);
             if (log == null)
                 await _logService.AddAsync(l);

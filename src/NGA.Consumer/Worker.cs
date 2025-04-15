@@ -27,7 +27,7 @@ namespace NGA.Consumer
         public ILogger<JfYuHttpRequest> _logger1;
         private ILogger<Worker> _logger;
 
-        public Worker(IServiceScopeFactory scopeFactory, IRabbitMQService rabbitMQService, ILogger<JfYuHttpRequest> logger1, ILogger<Worker> logger) : base(scopeFactory, rabbitMQService, logger1)
+        public Worker(IServiceScopeFactory scopeFactory, ILogger<JfYuHttpRequest> logger1, ILogger<Worker> logger) : base(scopeFactory, logger1)
         {
             ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";
             _logger1 = null;
@@ -36,10 +36,19 @@ namespace NGA.Consumer
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
 
-            _rabbitMQService.Receive("topic", HandleTopicAsync);
-
+            int consumerCount = 5;
+            var tasks = new List<Task>();
+            for (int i = 0; i < consumerCount; i++)
+            {
+                tasks.Add(Task.Run(() =>
+                {
+                    var scope = _scopeFactory.CreateScope();
+                    var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
+                    _rabbitMQService.Receive("topic", HandleTopicAsync, 10);
+                }, stoppingToken));
+            }
+            await Task.WhenAll(tasks);
             await Task.Delay(Timeout.Infinite, stoppingToken);
-
         }
 
         /// <summary>
@@ -48,16 +57,16 @@ namespace NGA.Consumer
         protected async Task<bool> HandleTopicAsync(string tid)
         {
             using var scope = _scopeFactory.CreateScope();
-            _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
-            _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
-            _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
-            _replayService = scope.ServiceProvider.GetRequiredService<IService<Replay, DataContext>>();
-            _replayHisService = scope.ServiceProvider.GetRequiredService<IService<ReplayHis, DataContext>>();
-            _userService = scope.ServiceProvider.GetRequiredService<IService<User, DataContext>>();
+            var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
+            var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
+            var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
+            var _replayService = scope.ServiceProvider.GetRequiredService<IService<Replay, DataContext>>();
+            var _replayHisService = scope.ServiceProvider.GetRequiredService<IService<ReplayHis, DataContext>>();
+            var _userService = scope.ServiceProvider.GetRequiredService<IService<User, DataContext>>();
             _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
             Token = await _redisService.GetAsync<NGBToken>("Token");
 
-            var data = await _topicService.GetOneAsync(q => q.Tid == tid);
+            var data = await _topicService.GetOneAsync(q => q.Tid == tid); 
             if (!await _redisService.LockTakeAsync(data.Tid, TimeSpan.FromHours(1)))
             {
                 _logger.LogInformation($"{data.Tid}:{data.Title}正在采集 跳过");
@@ -74,7 +83,7 @@ namespace NGA.Consumer
             {
                 do
                 {
-                    var result = await MainAsync(data, page);
+                    var result = await MainAsync(data, page, _userService, _replayService);
                     reptileNum = result.Item1;
                     data.ReptileNum = reptileNum;
                     await _topicService.UpdateAsync(data);
@@ -113,7 +122,7 @@ namespace NGA.Consumer
 
         }
 
-        protected async Task<Tuple<int, bool>> MainAsync(Topic t, int page)
+        protected async Task<Tuple<int, bool>> MainAsync(Topic t, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService)
         {
             HtmlNodeCollection lou = null;
             HtmlDocument htmlDocument = new HtmlDocument();
@@ -264,7 +273,65 @@ namespace NGA.Consumer
                 return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
             }
             return new Tuple<int, bool>(lastsort, true);
+            // 获取用户信息     
+            async Task GetUserInfo(string uid)
+            {
+                if (uid == null || uid.StartsWith("-") || uid == "0")
+                    return;
+                var user = await _userService.GetOneAsync(q => q.Uid == uid);
+                if (user == null || (DateTime.Now - user.UpdatedTime).Days > 7)
+                {
+                    if (user == null)
+                        user = new User();
+                    var html = "";
+                    try
+                    {
+                        int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30));
+                        var u = new JfYuHttpRequest(_logFilter, _logger1)
+                        {
+                            Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}",
+                            RequestEncoding = Encoding.GetEncoding("GB18030"),
+                            Timeout = 60,
+                        };
+                        u.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.ngacn.cc", Path = "/" });
+                        u.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.ngacn.cc", Path = "/" });
+                        html = await u.SendAsync();
+                        //var imgurl = "";
 
+                        user.Uid = uid;
+                        if (string.IsNullOrEmpty(html))
+                            return;
+                        if (html.Contains("参数错误"))
+                            return;
+                        if (html.Contains("找不到用户"))
+                            return;
+                        if (html.Contains("无此用户"))
+                            return;
+                        var rg = Regex.Match(html, "username\":.+?\"");
+                        user.UserName = rg.ToString().Replace("\"", "").Split(':')[1];
+                        //_user.Name = hn.InnerText;
+                        rg = Regex.Match(html, "group\":.+?\"");
+                        user.Group = rg.ToString().Replace("\"", "").Split(':')[1];
+                        rg = Regex.Match(html, "regdate\":.+?\"");
+                        user.Regdate = rg.ToString().Replace("\"", "").Replace(",", "").Split(':')[1];
+                        rg = Regex.Match(html, "avatar\":.+?\"");
+                        user.Avatar = rg.ToString().Replace("\"", "").Replace("http:", "").Split(':')[1];
+                        if (user.Id == 0)
+                            await _userService.AddAsync(user);
+                        else
+                            await _userService.UpdateAsync(user);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ex.Message.Contains("无效的 URI")) //用户头像url无效
+                            return;
+                        if (ex.Message == "远程服务器返回错误: (404) 未找到。") //用户本身头像url失效，错误日志不保存
+                            return;
+                        throw;
+                    }
+                }
+
+            }
         }
 
 
@@ -382,65 +449,6 @@ namespace NGA.Consumer
             floor.Content = _context;
         }
 
-        // 获取用户信息     
-        protected async Task GetUserInfo(string uid)
-        {
-            if (uid == null || uid.StartsWith("-") || uid == "0")
-                return;
-            var user = await _userService.GetOneAsync(q => q.Uid == uid);
-            if (user == null || (DateTime.Now - user.UpdatedTime).Days > 7)
-            {
-                if (user == null)
-                    user = new User();
-                var html = "";
-                try
-                {
-                    int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30));
-                    var u = new JfYuHttpRequest(_logFilter, _logger1)
-                    {
-                        Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}",
-                        RequestEncoding = Encoding.GetEncoding("GB18030"),
-                        Timeout = 60,
-                    };
-                    u.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.ngacn.cc", Path = "/" });
-                    u.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.ngacn.cc", Path = "/" });
-                    html = await u.SendAsync();
-                    //var imgurl = "";
-
-                    user.Uid = uid;
-                    if (string.IsNullOrEmpty(html))
-                        return;
-                    if (html.Contains("参数错误"))
-                        return;
-                    if (html.Contains("找不到用户"))
-                        return;
-                    if (html.Contains("无此用户"))
-                        return;
-                    var rg = Regex.Match(html, "username\":.+?\"");
-                    user.UserName = rg.ToString().Replace("\"", "").Split(':')[1];
-                    //_user.Name = hn.InnerText;
-                    rg = Regex.Match(html, "group\":.+?\"");
-                    user.Group = rg.ToString().Replace("\"", "").Split(':')[1];
-                    rg = Regex.Match(html, "regdate\":.+?\"");
-                    user.Regdate = rg.ToString().Replace("\"", "").Replace(",", "").Split(':')[1];
-                    rg = Regex.Match(html, "avatar\":.+?\"");
-                    user.Avatar = rg.ToString().Replace("\"", "").Replace("http:", "").Split(':')[1];
-                    if (user.Id == 0)
-                        await _userService.AddAsync(user);
-                    else
-                        await _userService.UpdateAsync(user);
-                }
-                catch (Exception ex)
-                {
-                    if (ex.Message.Contains("无效的 URI")) //用户头像url无效
-                        return;
-                    if (ex.Message == "远程服务器返回错误: (404) 未找到。") //用户本身头像url失效，错误日志不保存
-                        return;
-                    throw;
-                }
-            }
-
-        }
 
         //分割用户信息
         List<string> SplitArgs(string args)

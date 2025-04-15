@@ -24,7 +24,7 @@ namespace NGA.Producer
         private List<Black> _blackList = [];
         private ILogger<Worker> _logger;
         private ILogger<JfYuHttpRequest>? _logger1;
-        public Worker(IServiceScopeFactory scopeFactory, IRabbitMQService rabbitMQService, ILogger<Worker> logger, ILogger<JfYuHttpRequest> logger1) : base(scopeFactory, rabbitMQService, logger1)
+        public Worker(IServiceScopeFactory scopeFactory, IRabbitMQService rabbitMQService, ILogger<Worker> logger, ILogger<JfYuHttpRequest> logger1) : base(scopeFactory, logger1)
         {
             _logger = logger;
             _logger1 = null;
@@ -32,6 +32,12 @@ namespace NGA.Producer
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
+            var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
+            var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
+            var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
+
             _rabbitMQService.QueueBind("topic", "ex_topic", ExchangeType.Direct);
 
             var fid = Environment.GetEnvironmentVariable("PRODUCER_PID")?.ToString().Trim();
@@ -41,10 +47,7 @@ namespace NGA.Producer
             _logger.LogInformation($"fid:{fid}开始");
             do
             {
-                using var scope = _scopeFactory.CreateScope();
-                _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
-                _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
-                _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
+
                 _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
                 Token = await _redisService.GetAsync<NGBToken>("Token");
 
