@@ -25,7 +25,7 @@ namespace NGA.UI.Services
                 })
                 .OrderByDescending(x => x.LatestUpdateTime);
 
-            var latestTopics = ReadonlyContext.Topics.Where(q => q.Title.Contains(key))
+            var latestTopics = ReadonlyContext.Topics.Where(q => q.Title.Contains(key) || string.IsNullOrEmpty(key))
                        .Join(
                            latestReplays, // 关联最新的回复记录
                            topic => topic.Tid, // Topics 表的 Tid
