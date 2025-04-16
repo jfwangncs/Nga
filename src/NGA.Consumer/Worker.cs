@@ -66,10 +66,12 @@ namespace NGA.Consumer
             _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
             Token = await _redisService.GetAsync<NGBToken>("Token");
 
-            var data = await _topicService.GetOneAsync(q => q.Tid == tid); 
+            var data = await _topicService.GetOneAsync(q => q.Tid == tid);
+            if (data == null)
+                return true;
             if (!await _redisService.LockTakeAsync(data.Tid, TimeSpan.FromHours(1)))
             {
-                _logger.LogInformation($"{data.Tid}:{data.Title}正在采集 跳过");
+                _logger.LogInformation($"{data.Tid}:{data.Title}跳过");
                 return true;
             }
 
