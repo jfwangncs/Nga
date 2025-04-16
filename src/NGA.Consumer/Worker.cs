@@ -40,11 +40,12 @@ namespace NGA.Consumer
             var tasks = new List<Task>();
             for (int i = 0; i < consumerCount; i++)
             {
+                var taskId = i + 1;
                 tasks.Add(Task.Run(() =>
                 {
                     var scope = _scopeFactory.CreateScope();
                     var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-                    _rabbitMQService.Receive("topic", HandleTopicAsync, 10);
+                    var channel = _rabbitMQService.Receive("topic", async q => await HandleTopicAsync(q, taskId), 10);
                 }, stoppingToken));
             }
             await Task.WhenAll(tasks);
@@ -54,7 +55,7 @@ namespace NGA.Consumer
         /// <summary>
         /// 准备开始
         /// </summary>     
-        protected async Task<bool> HandleTopicAsync(string tid)
+        protected async Task<bool> HandleTopicAsync(string tid, int taskId)
         {
             using var scope = _scopeFactory.CreateScope();
             var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
@@ -71,12 +72,12 @@ namespace NGA.Consumer
                 return true;
             if (!await _redisService.LockTakeAsync(data.Tid, TimeSpan.FromHours(1)))
             {
-                _logger.LogInformation($"{data.Tid}:{data.Title}跳过");
+                _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}跳过");
                 return true;
             }
 
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
-            _logger.LogInformation($"{data.Tid}:{data.Title}-{data.ReptileNum}开始");
+            _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}-{data.ReptileNum}开始");
             var reptileNum = 0;
             if (ConsumerType == "New")
                 reptileNum = data.ReptileNum;
@@ -85,11 +86,11 @@ namespace NGA.Consumer
             {
                 do
                 {
-                    var result = await MainAsync(data, page, _userService, _replayService);
+                    var result = await MainAsync(data, page, _userService, _replayService, taskId);
                     reptileNum = result.Item1;
                     data.ReptileNum = reptileNum;
                     await _topicService.UpdateAsync(data);
-                    _logger.LogInformation($"{data.Tid}:{data.Title}第{page}页");
+                    _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}第{page}页");
                     if (result.Item2 || page > 100)
                         break;
                     page++;
@@ -100,12 +101,12 @@ namespace NGA.Consumer
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning($"{data.Tid}:{data.Title}超时，发回重新处理");
+                _logger.LogWarning($"{taskId}-{data.Tid}:{data.Title}超时，发回重新处理");
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"{data.Tid}:{data.Title}处理出错");
+                _logger.LogError(ex, $"{taskId}-{data.Tid}:{data.Title}处理出错");
                 var _log = new Log
                 {
                     Msg = ex.Message + "," + ex.InnerException?.Message,
@@ -118,13 +119,13 @@ namespace NGA.Consumer
             }
             finally
             {
-                _logger.LogInformation($"{data.Tid}:{data.Title}-{data.ReptileNum}结束");
+                _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}-{data.ReptileNum}结束");
                 await _redisService.LockReleaseAsync(data.Tid);
             }
 
         }
 
-        protected async Task<Tuple<int, bool>> MainAsync(Topic t, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService)
+        protected async Task<Tuple<int, bool>> MainAsync(Topic t, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
         {
             HtmlNodeCollection lou = null;
             HtmlDocument htmlDocument = new HtmlDocument();
@@ -144,12 +145,12 @@ namespace NGA.Consumer
             var html = await u.SendAsync();
             if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
             {
-                _logger.LogInformation($"{t.Title}被隐藏");
+                _logger.LogInformation($"{taskId}-{t.Title}被隐藏");
                 return new Tuple<int, bool>(0, true);
             }
             if (html.Contains("访客不能直接访问"))
             {
-                _logger.LogInformation("用户登录");
+                _logger.LogInformation($"{taskId}-用户登录");
                 await LoginAsync(u.ResponseCookies);
                 return new Tuple<int, bool>(0, true);
             }
@@ -176,7 +177,7 @@ namespace NGA.Consumer
 
             if (userInfoAll == null)
             {
-                _logger.LogInformation($"{t.Title},{page}:找不到用户信息");
+                _logger.LogInformation($"{taskId}-{t.Title},{page}:找不到用户信息");
                 return new Tuple<int, bool>(0, true);
             }
             var anonymousReg = Regex.Matches(userInfoAll, @"""-1"":{.*?username{1}.*?}", RegexOptions.IgnoreCase);
@@ -256,7 +257,7 @@ namespace NGA.Consumer
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"读取楼层出错,{t.Tid},{page}");
+                    _logger.LogError(ex, $"{taskId}-读取楼层出错,{t.Tid},{page}");
                     var _log = new Log
                     {
                         Msg = ex.Message + "," + ex.InnerException?.Message,
