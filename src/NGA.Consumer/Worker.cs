@@ -45,7 +45,7 @@ namespace NGA.Consumer
                 {
                     var scope = _scopeFactory.CreateScope();
                     var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-                    var channel = _rabbitMQService.Receive("topic", async q => await HandleTopicAsync(q, taskId), 10);
+                    var channel = _rabbitMQService.Receive("topic", async q => await HandleTopicAsync(q, taskId));
                 }, stoppingToken));
             }
             await Task.WhenAll(tasks);
@@ -87,10 +87,9 @@ namespace NGA.Consumer
                 do
                 {
                     var result = await MainAsync(data, page, _userService, _replayService, taskId);
-                    reptileNum = result.Item1;
-                    if (reptileNum != result.Item1)
+                    if (reptileNum != result.Item1 && result.Item1 != 0)
                     {
-                        data.ReptileNum = reptileNum;
+                        data.ReptileNum = result.Item1;
                         await _topicService.UpdateAsync(data);
                         _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}第{page}页");
                     }
@@ -199,10 +198,12 @@ namespace NGA.Consumer
                 {
                     var contentNode = lou[i].SelectSingleNode(".//span[contains(@id,'postcontentandsubject')]");
                     int sort = int.Parse(contentNode.Id.Replace("postcontentandsubject", ""));
-                    if (sort == t.ReptileNum)
-                        return new Tuple<int, bool>(0, true);
                     if (i == lou.Count - 1)
+                    {
                         lastsort = sort;
+                        if (sort == t.ReptileNum)
+                            return new Tuple<int, bool>(0, true);
+                    }
                     #region 如有引用回复 则保存其引用用户名称                    
                     //回复用户名处理
                     Regex rprg = new Regex(@"\[b\]Reply to.*?\[/b]");
