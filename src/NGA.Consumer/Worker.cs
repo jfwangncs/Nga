@@ -91,7 +91,7 @@ namespace NGA.Consumer
                     data.ReptileNum = reptileNum;
                     await _topicService.UpdateAsync(data);
                     _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}第{page}页");
-                    if (result.Item2 || page > 100)
+                    if (result.Item2)
                         break;
                     page++;
                     cts.Token.ThrowIfCancellationRequested();
