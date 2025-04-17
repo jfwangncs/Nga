@@ -88,9 +88,12 @@ namespace NGA.Consumer
                 {
                     var result = await MainAsync(data, page, _userService, _replayService, taskId);
                     reptileNum = result.Item1;
-                    data.ReptileNum = reptileNum;
-                    await _topicService.UpdateAsync(data);
-                    _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}第{page}页");
+                    if (reptileNum != result.Item1)
+                    {
+                        data.ReptileNum = reptileNum;
+                        await _topicService.UpdateAsync(data);
+                        _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title}第{page}页");
+                    }
                     if (result.Item2)
                         break;
                     page++;
@@ -189,11 +192,17 @@ namespace NGA.Consumer
                 anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
             }
             var lastsort = 0;
-            for (int i = 0; i < lou.Count; i++)
+            for (int i = lou.Count - 1; i >= 0; i--)
             {
+
                 try
                 {
                     var contentNode = lou[i].SelectSingleNode(".//span[contains(@id,'postcontentandsubject')]");
+                    int sort = int.Parse(contentNode.Id.Replace("postcontentandsubject", ""));
+                    if (sort == t.ReptileNum)
+                        return new Tuple<int, bool>(0, true);
+                    if (i == lou.Count - 1)
+                        lastsort = sort;
                     #region 如有引用回复 则保存其引用用户名称                    
                     //回复用户名处理
                     Regex rprg = new Regex(@"\[b\]Reply to.*?\[/b]");
@@ -227,7 +236,7 @@ namespace NGA.Consumer
                         }
                     }
                     #endregion
-                    int sort = int.Parse(contentNode.Id.Replace("postcontentandsubject", ""));
+
                     var replay = await _replayService.GetOneAsync(x => x.Sort == sort && x.Tid == t.Tid);
                     if (replay == null)
                         replay = new Replay();
@@ -253,7 +262,6 @@ namespace NGA.Consumer
                         await _replayService.AddAsync(replay);
                     else
                         await _replayService.UpdateAsync(replay);
-                    lastsort = replay.Sort;
                 }
                 catch (Exception ex)
                 {
