@@ -87,7 +87,7 @@ namespace NGA.Consumer
                 do
                 {
                     var result = await MainAsync(data, page, _userService, _replayService, taskId);
-                    if (reptileNum != result.Item1 && result.Item1 != 0)
+                    if (reptileNum != result.Item1 && result.Item1 != -1)
                     {
                         data.ReptileNum = result.Item1;
                         await _topicService.UpdateAsync(data);
@@ -148,13 +148,13 @@ namespace NGA.Consumer
             if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
             {
                 _logger.LogInformation($"{taskId}-{t.Title}被隐藏");
-                return new Tuple<int, bool>(0, true);
+                return new Tuple<int, bool>(-1, true);
             }
             if (html.Contains("访客不能直接访问"))
             {
                 _logger.LogInformation($"{taskId}-用户登录");
                 await LoginAsync(u.ResponseCookies);
-                return new Tuple<int, bool>(0, true);
+                return new Tuple<int, bool>(-1, true);
             }
 
             if (u.StatusCode != HttpStatusCode.OK)
@@ -167,12 +167,12 @@ namespace NGA.Consumer
                     Info = $"{t.Tid},{page}"
                 };
                 await WriteLogAsync(_log);
-                return new Tuple<int, bool>(0, true);
+                return new Tuple<int, bool>(-1, true);
             }
             htmlDocument.LoadHtml(html);
             lou = htmlDocument.DocumentNode.SelectNodes("//tr[contains(@id,'post1strow')]");
             if (lou == null)
-                return new Tuple<int, bool>(0, true);
+                return new Tuple<int, bool>(-1, true);
 
 
             var userInfoAll = htmlDocument.DocumentNode.SelectNodes("//script")?.Where(q => q.InnerText.Trim().ToString().Contains($"commonui.userInfo.setAll")).FirstOrDefault()?.InnerHtml;
@@ -180,7 +180,7 @@ namespace NGA.Consumer
             if (userInfoAll == null)
             {
                 _logger.LogInformation($"{taskId}-{t.Title},{page}:找不到用户信息");
-                return new Tuple<int, bool>(0, true);
+                return new Tuple<int, bool>(-1, true);
             }
             var anonymousReg = Regex.Matches(userInfoAll, @"""-1"":{.*?username{1}.*?}", RegexOptions.IgnoreCase);
             var anonymous = new Dictionary<string, UserinfoJson>();
@@ -201,8 +201,8 @@ namespace NGA.Consumer
                     if (i == lou.Count - 1)
                     {
                         lastsort = sort;
-                        if (sort == t.ReptileNum)
-                            return new Tuple<int, bool>(0, true);
+                        if (sort == t.ReptileNum && lou.Count > 1)
+                            return new Tuple<int, bool>(-1, true);
                     }
                     #region 如有引用回复 则保存其引用用户名称                    
                     //回复用户名处理
