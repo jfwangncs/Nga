@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NGA.Base;
 using NGA.Models;
-using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,14 +31,6 @@ namespace NGA.Producer
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-            var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
-            var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
-            var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
-
-            _rabbitMQService.QueueBind("topic", "ex_topic", ExchangeType.Direct);
-
             var fid = Environment.GetEnvironmentVariable("PRODUCER_PID")?.ToString().Trim();
             if (string.IsNullOrEmpty(fid))
                 fid = "-7";
@@ -47,10 +38,13 @@ namespace NGA.Producer
             _logger.LogInformation($"fid:{fid}开始");
             do
             {
-
+                using var scope = _scopeFactory.CreateScope();
+                var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
+                var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
+                var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
+                var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
                 _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
                 Token = await _redisService.GetAsync<NGBToken>("Token");
-
                 _blackList = [.. await _blackService.GetListAsync(q => q.State == 1)];
                 int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
                 try
