@@ -30,6 +30,7 @@ jobs:
         push: true
         tags: jfwangncs/ngb:${{ github.run_number }}
   deploy:
+    needs: docker
     runs-on: ubuntu-latest
     environment: production
 
