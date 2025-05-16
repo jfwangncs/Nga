@@ -47,6 +47,8 @@ jobs:
              ngac1:
               image: jfwangncs/ngb:${{ github.run_number }}
               container_name: ngac1  
+              volumes:
+                - /volume1/docker/compose/nga/appsettings.Production.json:/app/appsettings.Production.json
               environment:
                 - TZ=Asia/Shanghai
                 - ASPNETCORE_ENVIRONMENT=Production
@@ -55,7 +57,10 @@ jobs:
              ngp_7:
               image: jfwangncs/ngb:${{ github.run_number }}
               container_name: ngp_7
+              volumes:
+                - /volume1/docker/compose/nga/appsettings.Production.json:/app/appsettings.Production.json
               environment:
+                - ASPNETCORE_APPLICATION=Producer   
                 - TZ=Asia/Shanghai
                 - ASPNETCORE_ENVIRONMENT=Production
                 - PRODUCER_PID=-7
@@ -63,7 +68,10 @@ jobs:
              ngp_472:
               image: jfwangncs/ngb:${{ github.run_number }}
               container_name: ngp_472
+              volumes:
+                - /volume1/docker/compose/nga/appsettings.Production.json:/app/appsettings.Production.json
               environment:
+                - ASPNETCORE_APPLICATION=Producer     
                 - TZ=Asia/Shanghai
                 - ASPNETCORE_ENVIRONMENT=Production
                 - PRODUCER_PID=472
