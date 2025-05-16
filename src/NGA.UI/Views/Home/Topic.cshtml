@@ -1,0 +1,131 @@
+﻿@model IEnumerable<string>
+@{
+    Layout = "~/Views/Shared/_LayoutNoTheme.cshtml";
+    ViewData["Title"] = "积累点滴";
+}
+<link rel="stylesheet" href="~/css/Topic/Topic.css" asp-append-version="true" />
+<div class="container-fluid">
+    <br />
+    <div id="list" class="panel panel-default">
+        <!-- Default panel contents -->
+        <a id="top"></a>
+        <div class="panel-heading title">
+            <a href="/">主页</a>-<a v-bind:href="topic.Tid">{{ topic.Title}}</a>
+            <a class="soucea" target="_blank" v-bind:href="'https://bbs.nga.cn/read.php?tid='+topic.Tid">查看原帖</a>
+
+            <a class="soucea" target="_blank" href="javascript:void(0);" v-on:click.prevent="author()">{{onlyAuthor?"看全部":"只看楼主"}}</a>
+            <a class="soucea" target="_blank" href="javascript:void(0);" v-on:click.prevent="image()"> {{onlyImage?"看全部":"只看图片"}}</a>
+        </div> <div class="row">
+            <div class="col-lg-10"></div>
+            <div class="col-lg-2">
+                <div class="input-group">
+                    <input type="text" class="form-control" v-model="key" v-on:keyup.13="paging(1)"
+                           placeholder="ID/标题">
+                    <span class="input-group-btn">
+                        <button class="btn btn-default" type="button" v-on:click="paging(1)">Go!</button>
+                    </span>
+                </div>
+            </div>
+        </div>
+        @await Html.PartialAsync("_PagerPartial")
+        <div class="panel-body">
+
+            <div class="row show-grid" :class="item.Sort%2==1 ? 'even':'odd'" v-for="item in data">
+                <a v-bind:id="'Pid'+item.Pid"></a>
+                <div class="col-md-2 user">
+                    <div>
+                        <a class="uid" target="_blank" v-show="item.Sort==0" v-bind:href="'/User/'+item.Uid"> {{users[item.Uid]!=null?users[item.Uid].UserName||item.UName:(item.UName==null?'无此用户':item.UName)}}</a>
+                        <a class="uid" target="_blank" v-show="item.Sort!=0" v-bind:href="'/User/'+item.Uid"> {{users[item.Uid]!=null?users[item.Uid].UserName||'匿名':'匿名'}}</a>
+                        <div class="sort" v-show="item.Sort!=0">{{ item.Sort}}</div>
+                    </div>
+
+                    <div>
+                        <img v-bind:src="users[item.Uid]!=null?users[item.Uid].Avatar:''"
+                             id="posteravatar0" style="max-width:180px;max-height:255px" class="avatar">
+                    </div>
+                    <div>
+                        级别: <span name="level" class="silver"> {{users[item.Uid]!=null?users[item.Uid].Group:'匿名'}}</span>
+                        <br>
+                        注册时间: <span class="numeric silver" name="regdate">{{users[item.Uid]!=null?users[item.Uid].Regdate:''}}</span>
+
+                    </div>
+                </div>
+                <div class="col-md-10 content">
+                    <div class="mtitle">
+                        <div class="vote">
+                            <img src="/images/vote.png">
+                            <span>{{ item.Support - item.Oppose}}</span>
+                        </div>
+
+                        <span class="time">{{ item.PostDate|time}}</span>
+                    </div>
+                    <div class="mcontent" v-html="item.Content">
+                    </div>
+                </div>
+            </div>
+        </div>
+        @await Html.PartialAsync("_PagerPartial")
+    </div>
+
+
+</div>
+<script>
+
+    var topics = new Vue({
+        el: '#list',
+        data: {
+            topic: "",
+            users: {},
+            data: [],
+            key: "",
+            pageIndex: 1,
+            totalPages: 0,
+            totalCount: 0,
+            onlyAuthor: false,
+            onlyImage: false,
+
+        },
+        beforeCreate: function () {
+            var url = "/api/Topic/" + @ViewData["Tid"];
+            var _self = this;
+            $.get(url, {}, function (d) {
+                _self.data = d.replays.Data;
+                _self.topic = d.topic;
+                _self.totalPages = d.replays.TotalPages;
+                _self.totalCount = d.replays.TotalCount;
+                _self.users = d.users;
+                _self.$nextTick(function () {
+                    $("tr:last").children().css("border-bottom", "1px solid #ddd");
+                })
+            })
+        },
+        methods: {
+            paging: function (page) {
+                var url = "/api/Topic/" + @ViewData["Tid"];
+                var _self = this;
+                var parm = { pageIndex: page, Key: _self.key, onlyAuthor: _self.onlyAuthor, onlyImage: _self.onlyImage };
+                _self.pageIndex = page;
+                $.get(url, parm, function (d) {
+                    _self.data = d.replays.Data;
+                    _self.totalPages = d.replays.TotalPages;
+                    _self.totalCount = d.replays.TotalCount;
+                    _self.users = d.users;
+                    _self.$nextTick(function () {
+                        document.documentElement.scrollTop = document.body.scrollTop = -200;
+                    });
+                })
+            },
+            author: function () {
+                this.onlyAuthor = this.onlyAuthor ? false : true;
+                this.paging(1);
+            },
+            image: function () {
+                this.onlyImage = this.onlyImage ? false : true;
+                this.paging(1);
+            },
+        }
+    });
+</script>
+
+
+

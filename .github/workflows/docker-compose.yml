@@ -1,0 +1,74 @@
+name: Deploy
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "master"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps: 
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push NGA.Consumer image
+      uses: docker/build-push-action@v2
+      with:
+        context: ./src
+        file: ./src/NGA.Producer/Dockerfile
+        push: true
+        tags: jfwangncs/ngb:${{ github.run_number }}
+
+    - name: SSH into server and deploy container
+      uses: appleboy/ssh-action@master
+      with:
+        host: jfwang.xiaofengyu.com
+        port: 8033
+        username: jfwang
+        password: ${{ secrets.SERVER_SSH_PASSWORD }}
+        script: |
+          current_run_number=${{ github.run_number }}   
+          previous_run_number=$((current_run_number - 1))    
+          export PATH=$PATH:/usr/local/bin:/usr/bin:/bin
+
+          echo "version: '3'
+          services:
+             ngac1:
+              image: jfwangncs/ngb:${{ github.run_number }}
+              container_name: ngac1  
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+                - ASPNETCORE_APPLICATION=Consumer
+              restart: always             
+             ngp_7:
+              image: jfwangncs/ngb:${{ github.run_number }}
+              container_name: ngp_7
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+                - PRODUCER_PID=-7
+              restart: always
+             ngp_472:
+              image: jfwangncs/ngb:${{ github.run_number }}
+              container_name: ngp_472
+              environment:
+                - TZ=Asia/Shanghai
+                - ASPNETCORE_ENVIRONMENT=Production
+                - PRODUCER_PID=472
+              restart: always
+          " > /volume1/docker/compose/nga/compose.yaml
+          cd /volume1/docker/compose/nga
+          sudo docker-compose down
+          sudo docker-compose up -d 

@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+	</PropertyGroup>
+
+	<ItemGroup> 
+		<PackageReference Include="jfYu.Core.Data" Version="8.1.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />  
+	</ItemGroup>
+
+</Project>
