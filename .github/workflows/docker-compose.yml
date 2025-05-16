@@ -5,7 +5,7 @@ on:
     branches:
       - "master"
 jobs:
-  deploy:
+  docker:
     runs-on: ubuntu-latest
     environment: production
 
@@ -29,7 +29,11 @@ jobs:
         file: ./src/NGA.Producer/Dockerfile
         push: true
         tags: jfwangncs/ngb:${{ github.run_number }}
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
 
+    steps: 
     - name: SSH into server and deploy container
       uses: appleboy/ssh-action@master
       with:
