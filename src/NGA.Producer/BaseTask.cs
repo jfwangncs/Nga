@@ -140,7 +140,7 @@ namespace NGA.Producer
             _jfYuRequest = new JfYuHttpRequest();
             _jfYuRequest.Url = "https://www.ejiaimg.cn/api/v1/images/tokens";
             _jfYuRequest.Method = HttpMethod.Post;
-            _jfYuRequest.Authorization = _ejiaimg.Token;
+            _jfYuRequest.Authorization = _ejiaimg.EjiaimgToken;
             _jfYuRequest.RequestData = JsonConvert.SerializeObject(new { num = 1, seconds = 60 });
             var html = await _jfYuRequest.SendAsync();
             JObject jsonObject = JObject.Parse(html);
@@ -160,7 +160,7 @@ namespace NGA.Producer
             _jfYuRequest.Url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
             _jfYuRequest.Method = HttpMethod.Post;
             _jfYuRequest.ContentType = RequestContentType.Json;
-            _jfYuRequest.Authorization = _ejiaimg.QianWen;
+            _jfYuRequest.Authorization = _ejiaimg.QianWenToken;
             _jfYuRequest.RequestData = JsonConvert.SerializeObject(new ApiRequest()
             {
                 Model = "qwen-vl-max",
