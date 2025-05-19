@@ -24,7 +24,7 @@ namespace NGA.Producer
         private List<Black> _blackList = [];
         private ILogger<Producer> _logger;
         private IJfYuRequest _jfYuRequest;
-        public Producer(IServiceScopeFactory scopeFactory, IRabbitMQService rabbitMQService, ILogger<Producer> logger, IOptions<Ejiaimg> ejiaimg, IJfYuRequest request) : base(scopeFactory, ejiaimg,request)
+        public Producer(IServiceScopeFactory scopeFactory, IRabbitMQService rabbitMQService, ILogger<Producer> logger, IOptions<Ejiaimg> ejiaimg, IJfYuRequest request) : base(scopeFactory, ejiaimg)
         {
             _logger = logger;
             _jfYuRequest = request;

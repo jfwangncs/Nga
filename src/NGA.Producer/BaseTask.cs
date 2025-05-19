@@ -27,12 +27,10 @@ namespace NGA.Producer
         protected CookieCollection authcookies = [];
         public readonly IServiceScopeFactory _scopeFactory;
         private readonly Ejiaimg _ejiaimg;
-        private IJfYuRequest _jfYuRequest;
-        protected BaseTask(IServiceScopeFactory scopeFactory, IOptions<Ejiaimg> ejiaimg, IJfYuRequest jfYuRequest)
+        protected BaseTask(IServiceScopeFactory scopeFactory, IOptions<Ejiaimg> ejiaimg)
         {
             _scopeFactory = scopeFactory;
             _ejiaimg = ejiaimg.Value;
-            _jfYuRequest = jfYuRequest;
         }
 
         protected async Task GetRandomDelayAsync()
@@ -75,7 +73,7 @@ namespace NGA.Producer
                         Random random = new Random();
                         double randomValue = random.NextDouble();
                         string randomString = randomValue.ToString().Substring(2);
-
+                        var _jfYuRequest = new JfYuHttpRequest();
                         //登陆
                         _jfYuRequest.Url = "https://bbs.nga.cn/nuke.php";
                         _jfYuRequest.Method = HttpMethod.Post;
@@ -127,7 +125,7 @@ namespace NGA.Producer
 
         protected async Task<string> RefreshCode(CookieCollection cookies, string randomString)
         {
-            _jfYuRequest = new JfYuHttpRequest(new LogFilter());
+            var _jfYuRequest = new JfYuHttpRequest(); 
             _jfYuRequest.Url = $"https://bbs.nga.cn/login_check_code.php?id=login{randomString}&from=login";
             _jfYuRequest.RequestEncoding = Encoding.GetEncoding("GB18030");
             _jfYuRequest.RequestHeader.Referer = "https://bbs.nga.cn/nuke/account_copy.html?login";
@@ -139,7 +137,7 @@ namespace NGA.Producer
             await _jfYuRequest.DownloadFileAsync("code.png");
 
 
-            _jfYuRequest = new JfYuHttpRequest(new LogFilter());
+            _jfYuRequest = new JfYuHttpRequest();
             _jfYuRequest.Url = "https://www.ejiaimg.cn/api/v1/images/tokens";
             _jfYuRequest.Method = HttpMethod.Post;
             _jfYuRequest.Authorization = _ejiaimg.Token;
@@ -149,7 +147,7 @@ namespace NGA.Producer
 
             string token = (string)jsonObject["data"]["tokens"][0]["token"];
 
-            _jfYuRequest = new JfYuHttpRequest(new LogFilter());
+            _jfYuRequest = new JfYuHttpRequest();
             _jfYuRequest.Url = "https://www.ejiaimg.cn/api/v1/upload";
             _jfYuRequest.Method = HttpMethod.Post;
             _jfYuRequest.ContentType = RequestContentType.FormData;
@@ -158,7 +156,7 @@ namespace NGA.Producer
             var imgae = await _jfYuRequest.SendAsync();
             var imgurl = JsonConvert.DeserializeObject<ResponseModel>(imgae).Data.Links.Url;
 
-            _jfYuRequest = new JfYuHttpRequest(new LogFilter());
+            _jfYuRequest = new JfYuHttpRequest();
             _jfYuRequest.Url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
             _jfYuRequest.Method = HttpMethod.Post;
             _jfYuRequest.ContentType = RequestContentType.Json;

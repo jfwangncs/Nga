@@ -24,14 +24,12 @@ namespace NGA.Producer
     class Consumer : BaseTask
     {
         string ConsumerType = "New";//All 爬取所有 New爬取新回复   
-        private ILogger<Consumer> _logger;
-        private IJfYuRequest _jfYuRequest;
+        private ILogger<Consumer> _logger; 
 
-        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IOptions<Ejiaimg> ejiaimg, IJfYuRequest jfYuRequest) : base(scopeFactory, ejiaimg, jfYuRequest)
+        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IOptions<Ejiaimg> ejiaimg) : base(scopeFactory, ejiaimg)
         {
             ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";
-            _logger = logger;
-            _jfYuRequest = jfYuRequest;
+            _logger = logger; 
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         { 
@@ -125,6 +123,7 @@ namespace NGA.Producer
         {
             int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
             HtmlDocument htmlDocument = new HtmlDocument();
+            var _jfYuRequest=new JfYuHttpRequest();
             _jfYuRequest.Url = $"https://bbs.nga.cn/read.php?tid={t.Tid}&page={page}";
             _jfYuRequest.RequestEncoding = Encoding.GetEncoding("GB18030");
             _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
@@ -285,6 +284,7 @@ namespace NGA.Producer
                     try
                     {
                         int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30));
+                        var _jfYuRequest = new JfYuHttpRequest();
                         _jfYuRequest.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}";
                         _jfYuRequest.RequestEncoding = Encoding.GetEncoding("GB18030");
                         _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.ngacn.cc", Path = "/" });
