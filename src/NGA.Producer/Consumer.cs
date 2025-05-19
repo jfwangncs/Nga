@@ -24,16 +24,18 @@ namespace NGA.Producer
     class Consumer : BaseTask
     {
         string ConsumerType = "New";//All 爬取所有 New爬取新回复   
-        private ILogger<Consumer> _logger; 
+        private ILogger<Consumer> _logger;
+        private readonly Ejiaimg _ejiaimg;
 
         public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IOptions<Ejiaimg> ejiaimg) : base(scopeFactory, ejiaimg)
         {
             ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";
-            _logger = logger; 
+            _logger = logger;
+            _ejiaimg = ejiaimg.Value;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         { 
-            int consumerCount = int.Parse(Environment.GetEnvironmentVariable("ConsumerCount") ?? "1");
+            int consumerCount = _ejiaimg.ConsumerCount;
             var tasks = new List<Task>();
             for (int i = 0; i < consumerCount; i++)
             {
