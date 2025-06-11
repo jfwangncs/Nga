@@ -77,16 +77,15 @@ namespace NGA.Producer
             var reptileNum = 0;
             if (ConsumerType == "New")
                 originalNum = reptileNum = data.ReptileNum;
-            int page = int.Parse(data.Replies) / 20 + 1;
+            int page = reptileNum / 20 + 1;
             try
             {
                 do
                 {
                     var result = await MainAsync(data, page, _userService, _replayService, taskId);
-                    if (result.Item1 != -1)
+                    if (reptileNum != result.Item1 && result.Item1 != -1)
                     {
-                        data.ReptileNum += result.Item1;
-                        reptileNum = data.ReptileNum;
+                        reptileNum = data.ReptileNum = result.Item1;
                         await _topicService.UpdateAsync(data);
                     }
                     if (result.Item2)
@@ -271,9 +270,9 @@ namespace NGA.Producer
             if (!string.IsNullOrEmpty(maxPageHtml))
             {
                 var maxPage = int.Parse(maxPageHtml.Replace(s, "").Split(",")[0].Split(":")[1]);
-                return new Tuple<int, bool>(lous.Count, maxPage > page ? false : true);
+                return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
             }
-            return new Tuple<int, bool>(lous.Count, true);
+            return new Tuple<int, bool>(lastsort, true);
             // 获取用户信息     
             async Task GetUserInfo(string uid)
             {
