@@ -77,19 +77,21 @@ namespace NGA.Producer
             var reptileNum = 0;
             if (ConsumerType == "New")
                 originalNum = reptileNum = data.ReptileNum;
-            int page = reptileNum / 20 + 1;
+            int page = int.Parse(data.Replies) / 20 + 1;
             try
             {
                 do
                 {
                     var result = await MainAsync(data, page, _userService, _replayService, taskId);
-                    if (reptileNum != result.Item1 && result.Item1 != -1)
+                    if (result.Item1 != -1)
                     {
-                        reptileNum = data.ReptileNum = result.Item1;
+                        data.ReptileNum += result.Item1;
+                        reptileNum = data.ReptileNum;
                         await _topicService.UpdateAsync(data);
                     }
                     if (result.Item2)
                         break;
+
                     page++;
                     await GetRandomDelayAsync();
                     cts.Token.ThrowIfCancellationRequested();
@@ -125,7 +127,7 @@ namespace NGA.Producer
         {
             int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
             HtmlDocument htmlDocument = new HtmlDocument();
-            var _jfYuRequest=new JfYuHttpRequest();
+            var _jfYuRequest = new JfYuHttpRequest();
             _jfYuRequest.Url = $"https://bbs.nga.cn/read.php?tid={t.Tid}&page={page}";
             _jfYuRequest.RequestEncoding = Encoding.GetEncoding("GB18030");
             _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
@@ -269,9 +271,9 @@ namespace NGA.Producer
             if (!string.IsNullOrEmpty(maxPageHtml))
             {
                 var maxPage = int.Parse(maxPageHtml.Replace(s, "").Split(",")[0].Split(":")[1]);
-                return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
+                return new Tuple<int, bool>(lous.Count, maxPage > page ? false : true);
             }
-            return new Tuple<int, bool>(lastsort, true);
+            return new Tuple<int, bool>(lous.Count, true);
             // 获取用户信息     
             async Task GetUserInfo(string uid)
             {
@@ -302,14 +304,14 @@ namespace NGA.Producer
                         if (html.Contains("无此用户"))
                             return;
                         var rg = Regex.Match(html, "username\":.+?\"");
-                        user.UserName = rg.ToString().Replace("\"", "").Split(':')[1];
+                        user.UserName = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
                         //_user.Name = hn.InnerText;
                         rg = Regex.Match(html, "group\":.+?\"");
-                        user.Group = rg.ToString().Replace("\"", "").Split(':')[1];
+                        user.Group = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
                         rg = Regex.Match(html, "regdate\":.+?\"");
-                        user.Regdate = rg.ToString().Replace("\"", "").Replace(",", "").Split(':')[1];
+                        user.Regdate = rg.ToString().Replace("\"", "").Replace(",", "").Split(':').ElementAtOrDefault(1) ?? "";
                         rg = Regex.Match(html, "avatar\":.+?\"");
-                        user.Avatar = rg.ToString().Replace("\"", "").Replace("http:", "").Split(':')[1];
+                        user.Avatar = rg.ToString().Replace("\"", "").Replace("http:", "").Split(':').ElementAtOrDefault(1) ?? "";
                         if (user.Id == 0)
                             await _userService.AddAsync(user);
                         else
@@ -475,6 +477,8 @@ namespace NGA.Producer
 
         string GetName(string aname)
         {
+            if (aname.Length < 6)
+                return aname;
             var t1 = "甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥";
             var t2 = "王李张刘陈杨黄吴赵周徐孙马朱胡林郭何高罗郑梁谢宋唐许邓冯韩曹曾彭萧蔡潘田董袁于余叶蒋杜苏魏程吕丁沈任姚卢傅钟姜崔谭廖范汪陆金石戴贾韦夏邱方侯邹熊孟秦白江阎薛尹段雷黎史龙陶贺顾毛郝龚邵万钱严赖覃洪武莫孔汤向常温康施文牛樊葛邢安齐易乔伍庞颜倪庄聂章鲁岳翟殷詹申欧耿关兰焦俞左柳甘祝包宁尚符舒阮柯纪梅童凌毕单季裴霍涂成苗谷盛曲翁冉骆蓝路游辛靳管柴蒙鲍华喻祁蒲房滕屈饶解牟艾尤阳时穆农司卓古吉缪简车项连芦麦褚娄窦戚岑景党宫费卜冷晏席卫米柏宗瞿桂全佟应臧闵苟邬边卞姬师和仇栾隋商刁沙荣巫寇桑郎甄丛仲虞敖巩明佘池查麻苑迟邝";
             var i = 6;
