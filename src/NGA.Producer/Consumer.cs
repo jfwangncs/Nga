@@ -34,7 +34,7 @@ namespace NGA.Producer
             _ejiaimg = ejiaimg.Value;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        { 
+        {
             int consumerCount = _ejiaimg.ConsumerCount;
             var tasks = new List<Task>();
             for (int i = 0; i < consumerCount; i++)
@@ -265,11 +265,14 @@ namespace NGA.Producer
                     await WriteLogAsync(_log);
                 }
             }
-            var s = $"var __PAGE = {{0:'/read.php?tid={t.Tid}',";
-            var maxPageHtml = htmlDocument.DocumentNode.SelectNodes("//script").Where(q => q.InnerText.Trim().ToString().Contains(s)).FirstOrDefault()?.InnerHtml;
-            if (!string.IsNullOrEmpty(maxPageHtml))
+
+            var node = htmlDocument.DocumentNode.SelectSingleNode("//a[contains(@title, '最后页')]");
+            if (node != null)
             {
-                var maxPage = int.Parse(maxPageHtml.Replace(s, "").Split(",")[0].Split(":")[1]);
+                string href = node.GetAttributeValue("href", "");
+                var uri = new Uri("http://example.com/" + href); // 假定一个基础URL来帮助Uri类解析相对路径
+                var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                int.TryParse(queryParams["page"], out int maxPage);
                 return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
             }
             return new Tuple<int, bool>(lastsort, true);
