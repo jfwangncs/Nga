@@ -178,6 +178,16 @@ namespace NGA.Producer
                 var data = JsonConvert.DeserializeObject<Dictionary<string, UserinfoJson>>(value);
                 anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
             }
+            var node = htmlDocument.DocumentNode.SelectSingleNode("//a[contains(@title, '最后页')]");
+            int maxPage = 0;
+            if (node != null)
+            {
+                string href = node.GetAttributeValue("href", "");
+                var uri = new Uri("http://example.com/" + href); // 假定一个基础URL来帮助Uri类解析相对路径
+                var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                int.TryParse(queryParams["page"], out  maxPage);
+               
+            }
             var lastsort = 0;
             for (int i = lous.Count - 1; i >= 0; i--)
             {
@@ -190,7 +200,7 @@ namespace NGA.Producer
                     {
                         lastsort = sort;
                         if (sort == t.ReptileNum && lous.Count > 1)
-                            return new Tuple<int, bool>(-1, true);
+                            return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
                     }
                     #region 如有引用回复 则保存其引用用户名称                    
                     //回复用户名处理
@@ -266,16 +276,7 @@ namespace NGA.Producer
                 }
             }
 
-            var node = htmlDocument.DocumentNode.SelectSingleNode("//a[contains(@title, '最后页')]");
-            if (node != null)
-            {
-                string href = node.GetAttributeValue("href", "");
-                var uri = new Uri("http://example.com/" + href); // 假定一个基础URL来帮助Uri类解析相对路径
-                var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                int.TryParse(queryParams["page"], out int maxPage);
-                return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
-            }
-            return new Tuple<int, bool>(lastsort, true);
+            return new Tuple<int, bool>(lastsort, maxPage > page ? false : true); 
             // 获取用户信息     
             async Task GetUserInfo(string uid)
             {
