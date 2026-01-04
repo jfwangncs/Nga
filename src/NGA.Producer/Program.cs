@@ -23,13 +23,13 @@ namespace NGA.Console
 {
     class Program
     {
-        public static readonly string ServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "NGA.Console.Consumer";
+        public static readonly string ServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "NGA.Console.Consumer"; 
         static void Main(string[] args)
         {
             var logger = LogManager.Setup().GetCurrentClassLogger();
             try
             {
-                logger.Info("启动");
+                logger.Info("{ServiceName}启动", ServiceName);
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
                 IConfigurationRoot config = new ConfigurationBuilder().AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"}.json")
                     .AddEnvironmentVariables()
@@ -75,15 +75,13 @@ namespace NGA.Console
 
                 builder.Services.AddRabbitMQ((options, policy) => { config.GetSection("RabbitMQ").Bind(options); });
                 builder.Services.AddRedisService(options => { config.GetSection("Redis").Bind(options); });
-                builder.Services.AddHostedService<Producer>();
-                //if (Environment.GetEnvironmentVariable("ASPNETCORE_APPLICATION") == "Producer")
-                //    builder.Services.AddHostedService<Producer>();
-                //else
-                //    builder.Services.AddHostedService<Consumer>();
-                builder.Services.AddJfYuHttpClient(q => new JfYuHttpClientOptions() { HttpClientName = HttpClientName.NgaClientName }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None); 
-                builder.Services.AddJfYuHttpClient(q => new JfYuHttpClientOptions() { HttpClientName = HttpClientName.QianWenClientName }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
-                builder.Services.AddJfYuHttpClient(null, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
-                builder.Services.Configure<ConsoleOptions>(config.GetSection("Ejiaimg"));
+                if (ServiceName == "NGA.Console.Producer")
+                    builder.Services.AddHostedService<Producer>();
+                else
+                    builder.Services.AddHostedService<Consumer>();
+                builder.Services.AddJfYuHttpClient(q => { q.HttpClientName = HttpClientName.NgaClientName; }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
+                builder.Services.AddJfYuHttpClient(q => { q.HttpClientName = HttpClientName.QianWenClientName; }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
+                builder.Services.Configure<ConsoleOptions>(config.GetSection("Console"));
                 builder.Services.AddScoped<ILoginHelper, LoginHelper>();
                 using IHost host = builder.Build();
                 host.Run();

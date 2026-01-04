@@ -67,8 +67,7 @@ namespace NGA.Console
             _guid = Guid.NewGuid().ToString("n");
             if (string.IsNullOrEmpty(tid))
                 return true;
-            using var scope = _scopeFactory.CreateScope();
-            var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
+            using var scope = _scopeFactory.CreateScope(); 
             var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
             var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
             var _replayService = scope.ServiceProvider.GetRequiredService<IService<Replay, DataContext>>();
