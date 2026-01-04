@@ -1,6 +1,7 @@
 using JfYu.Data.Extension;
 using JfYu.RabbitMQ;
 using JfYu.Redis.Extensions;
+using JfYu.Request;
 using JfYu.Request.Extension;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,15 +11,19 @@ using NGA.Models;
 using NGA.Models.Constant;
 using NLog;
 using NLog.Extensions.Logging;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Text;
 
 namespace NGA.Console
 {
     class Program
     {
-        public static readonly ActivitySource ActivitySource = new("NGA.Console");
+        public static readonly string ServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "NGA.Console.Consumer";
         static void Main(string[] args)
         {
             var logger = LogManager.Setup().GetCurrentClassLogger();
@@ -26,17 +31,47 @@ namespace NGA.Console
             {
                 logger.Info("启动");
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-                IConfigurationRoot config = new ConfigurationBuilder().AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"}.json").AddEnvironmentVariables().Build();
+                IConfigurationRoot config = new ConfigurationBuilder().AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"}.json")
+                    .AddEnvironmentVariables()
+                    .Build();
+
                 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+                builder.Services.AddOpenTelemetry()
+               .ConfigureResource(resource => resource
+                   .AddService(ServiceName)
+                   .AddAttributes(new Dictionary<string, object>
+                   {
+                       ["deployment.environment"] = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development",
+                   }))
+               .WithTracing(tracing => tracing
+                    .AddSource(ServiceName)
+                    .AddHttpClientInstrumentation()
+                    .AddEntityFrameworkCoreInstrumentation()
+                    .AddRabbitMQInstrumentation()
+                    .AddRedisInstrumentation()
+                    .AddOtlpExporter())
+               .WithMetrics(metrics => metrics
+                    .AddMeter(ServiceName)
+                    .AddHttpClientInstrumentation()
+                    .AddRuntimeInstrumentation()
+                    .AddProcessInstrumentation()
+                    .AddPrometheusExporter());
 
                 builder.Logging.ClearProviders(); // 清除默认的日志提供程序
                 builder.Logging.AddNLog(); // 添加 NLog 
 
+                builder.Logging.AddOpenTelemetry(logging =>
+                {
+                    logging.IncludeFormattedMessage = true;
+                    logging.IncludeScopes = true;
+                    logging.AddOtlpExporter();  // 可选: 发送日志到 Loki
+                });
                 builder.Services.AddJfYuDbContext<DataContext>(options =>
                 {
                     config.GetSection("ConnectionStrings").Bind(options);
                 });
-              
+
 
                 builder.Services.AddRabbitMQ((options, policy) => { config.GetSection("RabbitMQ").Bind(options); });
                 builder.Services.AddRedisService(options => { config.GetSection("Redis").Bind(options); });
@@ -45,8 +80,11 @@ namespace NGA.Console
                 //    builder.Services.AddHostedService<Producer>();
                 //else
                 //    builder.Services.AddHostedService<Consumer>();
+                builder.Services.AddJfYuHttpClient(q => new JfYuHttpClientOptions() { HttpClientName = HttpClientName.NgaClientName }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None); 
+                builder.Services.AddJfYuHttpClient(q => new JfYuHttpClientOptions() { HttpClientName = HttpClientName.QianWenClientName }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
                 builder.Services.AddJfYuHttpClient(null, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
-                builder.Services.Configure<Ejiaimg>(config.GetSection("Ejiaimg"));
+                builder.Services.Configure<ConsoleOptions>(config.GetSection("Ejiaimg"));
+                builder.Services.AddScoped<ILoginHelper, LoginHelper>();
                 using IHost host = builder.Build();
                 host.Run();
             }

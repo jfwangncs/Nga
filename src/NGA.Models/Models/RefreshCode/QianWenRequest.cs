@@ -1,17 +1,17 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Newtonsoft.Json;
-namespace NGA.Models.Models
+namespace NGA.Models.Models.RefreshCode
 {
-    public class ApiRequest
+    public class QianWenRequest
     {
         [JsonProperty("model")]
         public string Model { get; set; }
 
         [JsonProperty("messages")]
-        public List<ApiRequestMessage> Messages { get; set; }
+        public List<QianWenRequestMessage> Messages { get; set; }
     }
 
-    public class ApiRequestMessage
+    public class QianWenRequestMessage
     {
         [JsonProperty("role")]
         public string Role { get; set; }

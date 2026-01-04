@@ -4,16 +4,19 @@ using JfYu.RabbitMQ;
 using JfYu.Redis.Interface;
 using JfYu.Request;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using NGA.Models;
 using NGA.Models.Constant;
+using NGA.Models.Entity;
 using NGA.Models.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -21,21 +24,26 @@ using System.Threading.Tasks;
 
 namespace NGA.Console
 {
-    class Consumer : BaseTask
+    class Consumer : BackgroundService
     {
-        string ConsumerType = "New";//All 爬取所有 New爬取新回复   
+        private string _guid = "";
+        private NGBToken? _token;
+        string ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";//All 爬取所有 New爬取新回复   
         private ILogger<Consumer> _logger;
-        private readonly Ejiaimg _ejiaimg;
+        private readonly ConsoleOptions _consoleOptions;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IJfYuRequest _ngaClient;
 
-        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IOptions<Ejiaimg> ejiaimg) : base(scopeFactory, ejiaimg)
+        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IJfYuRequestFactory httpClientFactory, IOptions<ConsoleOptions> consoleOptions)
         {
-            ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";
             _logger = logger;
-            _ejiaimg = ejiaimg.Value;
+            _consoleOptions = consoleOptions.Value;
+            _scopeFactory = scopeFactory;
+            _ngaClient = httpClientFactory.CreateRequest(HttpClientName.NgaClientName);
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            int consumerCount = _ejiaimg.ConsumerCount;
+            int consumerCount = _consoleOptions.ConsumerCount;
             var tasks = new List<Task>();
             for (int i = 0; i < consumerCount; i++)
             {
@@ -56,6 +64,7 @@ namespace NGA.Console
         /// </summary>     
         protected async Task<bool> HandleTopicAsync(string? tid, int taskId)
         {
+            _guid = Guid.NewGuid().ToString("n");
             if (string.IsNullOrEmpty(tid))
                 return true;
             using var scope = _scopeFactory.CreateScope();
@@ -66,98 +75,84 @@ namespace NGA.Console
             var _replayHisService = scope.ServiceProvider.GetRequiredService<IService<ReplayHis, DataContext>>();
             var _userService = scope.ServiceProvider.GetRequiredService<IService<User, DataContext>>();
             var _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
-            Token = await _redisService.GetAsync<NGBToken>("Token");
+            _token = await _redisService.GetAsync<NGBToken>("Token");
 
-            var data = await _topicService.GetOneAsync(q => q.Tid == tid);
-            if (data == null)
+            var topic = await _topicService.GetOneAsync(q => q.Tid == tid);
+            if (topic == null)
                 return true;
-            if (!await _redisService.LockTakeAsync(data.Tid, TimeSpan.FromHours(1)))
+            if (!await _redisService.LockTakeAsync(topic.Tid, TimeSpan.FromHours(1)))
                 return true;
 
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
             var originalNum = 0;
             var reptileNum = 0;
             if (ConsumerType == "New")
-                originalNum = reptileNum = data.ReptileNum;
+                originalNum = reptileNum = topic.ReptileNum;
             int page = reptileNum / 20 + 1;
             try
             {
                 do
                 {
-                    var result = await MainAsync(data, page, _userService, _replayService, taskId);
+                    var result = await MainAsync(topic, page, _userService, _replayService, taskId);
                     if (reptileNum != result.Item1 && result.Item1 != -1)
                     {
-                        reptileNum = data.ReptileNum = result.Item1;
-                        await _topicService.UpdateAsync(data);
+                        reptileNum = topic.ReptileNum = result.Item1;
+                        await _topicService.UpdateAsync(topic);
                     }
                     if (result.Item2)
                         break;
 
                     page++;
-                    await GetRandomDelayAsync();
+                    await RandomDelayExtension.GetRandomDelayAsync();
                     cts.Token.ThrowIfCancellationRequested();
                 } while (true);
                 return true;
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning($"{taskId}-{data.Tid}:{data.Title}超时，发回继续处理");
+                _logger.LogWarning("{Guid}: {TaskId}-{Tid}-{Title}超时，发回继续处理", _guid, taskId, topic.Tid, topic.Title);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"{taskId}-{data.Tid}:{data.Title}处理出错");
-                var _log = new Log
-                {
-                    Msg = ex.Message + "," + ex.InnerException?.Message,
-                    Trace = ex.StackTrace,
-                    Type = "详细出错",
-                    Info = $"{data.Tid},{page}"
-                };
-                await WriteLogAsync(_log);
+                _logger.LogError(ex, "{Guid}: {TaskId}-{Tid}-{Title}发生错误", _guid, taskId, topic.Tid, topic.Title);
                 return false;
             }
             finally
             {
-                _logger.LogInformation($"{taskId}-{data.Tid}:{data.Title},{originalNum}-{data.ReptileNum}结束");
-                await _redisService.LockReleaseAsync(data.Tid);
+                _logger.LogInformation("{Guid}: {TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", _guid, taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
+                await _redisService.LockReleaseAsync(topic.Tid);
             }
         }
 
-        protected async Task<Tuple<int, bool>> MainAsync(Topic t, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
+        protected async Task<Tuple<int, bool>> MainAsync(Topic topic, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
         {
             int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
             HtmlDocument htmlDocument = new HtmlDocument();
-            var _jfYuRequest = new JfYuHttpRequest();
-            _jfYuRequest.Url = $"https://bbs.nga.cn/read.php?tid={t.Tid}&page={page}";
-            _jfYuRequest.RequestEncoding = Encoding.GetEncoding("GB18030");
-            _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-            _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-            _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = Token?.Token, Domain = ".nga.cn", Path = "/" });
-            _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = Token?.Uid, Domain = ".nga.cn", Path = "/" });
-            var html = await _jfYuRequest.SendAsync();
+            _ngaClient.Url = $"https://bbs.nga.cn/read.php?tid={topic.Tid}&page={page}";
+            _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
+            var html = await _ngaClient.SendAsync();
             if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
             {
-                _logger.LogInformation($"{taskId}-{t.Title}被隐藏");
+                _logger.LogInformation($"{taskId}-{topic.Title}被隐藏");
                 return new Tuple<int, bool>(-1, true);
             }
             if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
             {
-                _logger.LogInformation($"{taskId}-用户登录");
-                await LoginAsync(_jfYuRequest.ResponseCookies);
+                _logger.LogInformation("{Guid}:用户登录", _guid);
+                using var scope = _scopeFactory.CreateScope();
+                var _loginHelper = scope.ServiceProvider.GetRequiredService<ILoginHelper>();
+                await _loginHelper.LoginAsync();
                 return new Tuple<int, bool>(-1, true);
             }
 
-            if (_jfYuRequest.StatusCode != HttpStatusCode.OK)
+            if (_ngaClient.StatusCode != HttpStatusCode.OK)
             {
-                var _log = new Log
-                {
-                    Msg = html,
-                    Trace = _jfYuRequest.StatusCode.ToString(),
-                    Type = "详细获取html出错",
-                    Info = $"{t.Tid},{page}"
-                };
-                await WriteLogAsync(_log);
+                _logger.LogWarning("{Guid}: {TaskId}-{Tid}-{Title}-{Html}状态不正确,", _guid, taskId, topic.Tid, topic.Title, html);
                 return new Tuple<int, bool>(-1, true);
             }
             htmlDocument.LoadHtml(html);
@@ -169,7 +164,7 @@ namespace NGA.Console
 
             if (userInfoAll == null)
             {
-                _logger.LogInformation($"{taskId}-{t.Title},{page}:找不到用户信息");
+                _logger.LogInformation($"{taskId}-{topic.Title},{page}:找不到用户信息");
                 return new Tuple<int, bool>(-1, true);
             }
             var anonymousReg = Regex.Matches(userInfoAll, @"""-1"":{.*?username{1}.*?}", RegexOptions.IgnoreCase);
@@ -182,7 +177,7 @@ namespace NGA.Console
                     anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
             }
             int maxPage = 0;
-            var s = $"var __PAGE = {{0:'/read.php?tid={t.Tid}',";
+            var s = $"var __PAGE = {{0:'/read.php?tid={topic.Tid}',";
             var maxPageHtml = htmlDocument.DocumentNode.SelectNodes("//script").Where(q => q.InnerText.Trim().ToString().Contains(s)).FirstOrDefault()?.InnerHtml;
             if (!string.IsNullOrEmpty(maxPageHtml))
                 maxPage = int.Parse(maxPageHtml.Replace(s, "").Split(",")[0].Split(":")[1]);
@@ -197,7 +192,7 @@ namespace NGA.Console
                     if (i == lous.Count - 1)
                     {
                         lastsort = sort;
-                        if (sort == t.ReptileNum && lous.Count > 1)
+                        if (sort == topic.ReptileNum && lous.Count > 1)
                             return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
                     }
                     #region 如有引用回复 则保存其引用用户名称                    
@@ -234,10 +229,10 @@ namespace NGA.Console
                     }
                     #endregion
 
-                    var replay = await _replayService.GetOneAsync(x => x.Sort == sort && x.Tid == t.Tid);
+                    var replay = await _replayService.GetOneAsync(x => x.Sort == sort && x.Tid == topic.Tid);
                     if (replay == null)
                         replay = new Replay();
-                    replay.Tid = t.Tid;
+                    replay.Tid = topic.Tid;
                     replay.Sort = sort;
                     //获取replayid
                     if (sort != 0)
@@ -262,15 +257,7 @@ namespace NGA.Console
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"{taskId}-读取楼层出错,{t.Tid},{page}");
-                    var _log = new Log
-                    {
-                        Msg = ex.Message + "," + ex.InnerException?.Message,
-                        Trace = ex.StackTrace,
-                        Type = "详细楼层处理出错",
-                        Info = $"{t.Tid},{page}"
-                    };
-                    await WriteLogAsync(_log);
+                    _logger.LogError(ex, "{Guid}: {TaskId}-{Tid}-{Title}-{Page}读取楼层出错", _guid, taskId, topic.Tid, topic.Title,page); 
                 }
             }
 

@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace NGA.Models.Models
+namespace NGA.Models.Models.RefreshCode
 {
-    public class ApiResponse
+    public class QianWenResponse
     {
         [JsonPropertyName("choices")]
         public List<Choice> Choices { get; set; }

@@ -3,6 +3,7 @@ using JfYu.Data.Extension;
 using JfYu.Data.Model;
 using JfYu.Data.Service;
 using NGA.Models;
+using NGA.Models.Entity;
 using System.Linq;
 using System.Threading.Tasks;
 

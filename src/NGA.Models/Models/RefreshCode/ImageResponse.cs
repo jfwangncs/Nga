@@ -1,8 +1,8 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
-namespace NGA.Models.Models
+namespace NGA.Models.Models.RefreshCode
 {
-    public class ResponseModel
+    public class ImageResponse
     {
         [JsonPropertyName("status")]
         public bool Status { get; set; }

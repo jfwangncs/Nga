@@ -1,7 +1,7 @@
 using JfYu.Data.Model;
 using System.ComponentModel.DataAnnotations;
 
-namespace NGA.Models
+namespace NGA.Models.Entity
 {
     public class Topic : BaseEntity
     {

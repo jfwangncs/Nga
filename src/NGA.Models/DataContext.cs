@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using NGA.Models.Entity;
 using System;
 namespace NGA.Models
 {
@@ -8,11 +9,9 @@ namespace NGA.Models
         public DataContext(DbContextOptions<DataContext> options) : base(options)
         {
           
-        }
-      
+        }      
         public DbSet<Topic> Topics { get; set; }
-        public DbSet<Black> Blacks { get; set; }
-        public DbSet<Log> Logs { get; set; }
+        public DbSet<Black> Blacks { get; set; } 
         public DbSet<Replay> Replays { get; set; }
         public DbSet<ReplayHis> ReplayHis { get; set; }
 

@@ -2,6 +2,7 @@ using JfYu.Data.Extension;
 using JfYu.Data.Service;
 using Microsoft.AspNetCore.Mvc;
 using NGA.Models;
+using NGA.Models.Entity;
 using NGA.UI.Services;
 using System;
 using System.Collections.Generic;

@@ -4,11 +4,13 @@ using JfYu.RabbitMQ;
 using JfYu.Redis.Interface;
 using JfYu.Request;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using NGA.Models;
 using NGA.Models.Constant;
+using NGA.Models.Entity;
+using NGA.Models.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,16 +22,22 @@ using System.Threading.Tasks;
 
 namespace NGA.Console
 {
-    public class Producer : BaseTask
+    public class Producer : BackgroundService
     {
-        private List<Black> _blackList = [];
-        private ILogger<Producer> _logger;
-        private IJfYuRequest _jfYuRequest;
+        private NGBToken? _token;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<Producer> _logger;
+        private readonly IJfYuRequest _ngaClient;
+        private readonly IRedisService _redisService;
         private readonly string QUEUE_NAME = "ex_topic";
-        public Producer(IServiceScopeFactory scopeFactory, IRabbitMQService rabbitMQService, ILogger<Producer> logger, IOptions<Ejiaimg> ejiaimg, IJfYuRequest request) : base(scopeFactory, ejiaimg)
+        private List<Black> _blackList = [];
+
+        public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequestFactory httpClientFactory, IRedisService redisService)
         {
             _logger = logger;
-            _jfYuRequest = request;
+            _ngaClient = httpClientFactory.CreateRequest(HttpClientName.NgaClientName);
+            _scopeFactory = scopeFactory;
+            _redisService = redisService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -40,13 +48,11 @@ namespace NGA.Console
             do
             {
                 var guid = Guid.NewGuid().ToString("n");
-                using var scope = _scopeFactory.CreateScope();
-                var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
+                using var scope = _scopeFactory.CreateScope(); 
                 var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
                 var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
-                var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-                var _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
-                Token = await _redisService.GetAsync<NGBToken>("Token");
+                var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>(); 
+                _token = await _redisService.GetAsync<NGBToken>("Token");
                 _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
                 int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
                 var queueTids = new List<string>();
@@ -54,27 +60,29 @@ namespace NGA.Console
                 {
                     try
                     {
-                        _jfYuRequest.Url = $"https://bbs.nga.cn/thread.php?fid={fid}&page={startPage}&order_by=lastpostdesc";
-                        _jfYuRequest.RequestEncoding = Encoding.GetEncoding("GB18030");
-                        _jfYuRequest.Timeout = 10;
-                        _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-                        _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-                        _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = Token?.Token, Domain = ".nga.cn", Path = "/" });
-                        _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = Token?.Uid, Domain = ".nga.cn", Path = "/" });
-                        var html = await _jfYuRequest.SendAsync();
+                        _ngaClient.Url = $"https://bbs.nga.cn/thread.php?fid={fid}&page={startPage}&order_by=lastpostdesc";
+                        _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
+                        _ngaClient.RequestHeader.AcceptEncoding = "";
+                        _ngaClient.Timeout = 10;
+                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
+                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
+                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
+                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
+                        var html = await _ngaClient.SendAsync();
 
                         if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
                         {
                             _logger.LogInformation("{Guid}:用户登录", guid);
-                            await LoginAsync(_jfYuRequest.ResponseCookies);
+                            var _loginHelper = scope.ServiceProvider.GetRequiredService<ILoginHelper>();
+                            await _loginHelper.LoginAsync();
                             continue;
                         }
 
                         if (string.IsNullOrEmpty(html))
                             continue;
 
-                        if (_jfYuRequest.StatusCode != HttpStatusCode.OK)
-                            throw new Exception($"HttpStats is wrong,status:{_jfYuRequest.StatusCode},html:{html}");
+                        if (_ngaClient.StatusCode != HttpStatusCode.OK)
+                            throw new Exception($"HttpStats is wrong,status:{_ngaClient.StatusCode},html:{html}");
 
                         var htmlDocument = new HtmlDocument();
                         htmlDocument.LoadHtml(html);
@@ -119,33 +127,26 @@ namespace NGA.Console
                                     await _topicService.UpdateAsync(topic);
                                     queueTids.Add(t.Tid);
                                 }
-                                _logger.LogInformation("{Guid}:FID:{FID},TID:{TID},{Title}", guid, fid,t.Tid, t.Title);
+                                _logger.LogInformation("{Guid}:FID:{FID},TID:{TID},{Title}", guid, fid, t.Tid, t.Title);
                             }
                         }
 
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, ex.Message);
-                        var _log = new Log
-                        {
-                            Msg = "获取帖子列表出错",
-                            Trace = ex.Message + ex.StackTrace,
-                        };
-                        await WriteLogAsync(_log);
-                        await GetRandomDelayAsync();
+                        _logger.LogError(ex, "获取列表出错");
+                        await RandomDelayExtension.GetRandomDelayAsync();
                         continue;
                     }
                     await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
                     _logger.LogInformation("{Guid}:共发送{count}条到队列", guid, queueTids.Count);
                     queueTids = [];
                 }
-                await GetRandomDelayAsync();
+                await RandomDelayExtension.GetRandomDelayAsync();
                 startPage = startPage > 3 ? 1 : ++startPage;
             } while (true);
         }
 
-        // 处理黑名单        
         protected bool CheckBlackList(Topic t)
         {
             foreach (var item in _blackList)

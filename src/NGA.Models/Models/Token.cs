@@ -1,4 +1,4 @@
-﻿namespace NGA.Models
+namespace NGA.Models.Models
 {
     public class NGBToken
     {

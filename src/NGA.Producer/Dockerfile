@@ -1,14 +1,14 @@
-#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS base
 RUN mkdir -p /app && chmod 777 /app
 USER app
 WORKDIR /app
 
+EXPOSE 9464
+
 ARG APPLICATION_NAME
 ENV ASPNETCORE_APPLICATION=${APPLICATION_NAME}
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["NGA.Console/NGA.Console.csproj", "NGA.Console/"] 
@@ -25,5 +25,5 @@ RUN dotnet publish "./NGA.Console.csproj" -c $BUILD_CONFIGURATION -o /app/publis
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENV ASPNETCORE_HTTP_PORT=
+
 ENTRYPOINT ["dotnet", "NGA.Console.dll"]
