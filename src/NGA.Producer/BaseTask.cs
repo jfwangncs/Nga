@@ -1,7 +1,7 @@
-﻿using jfYu.Core.Data.Service;
-using jfYu.Core.jfYuRequest;
-using jfYu.Core.jfYuRequest.Enum;
-using jfYu.Core.Redis.Interface;
+using JfYu.Data.Service;
+using JfYu.Redis.Interface;
+using JfYu.Request;
+using JfYu.Request.Enum;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -123,7 +123,7 @@ namespace NGA.Producer
 
         }
 
-        protected async Task<string> RefreshCode(CookieCollection cookies, string randomString)
+        protected async Task<string?> RefreshCode(CookieCollection cookies, string randomString)
         {
             var _jfYuRequest = new JfYuHttpRequest(); 
             _jfYuRequest.Url = $"https://bbs.nga.cn/login_check_code.php?id=login{randomString}&from=login";
@@ -154,7 +154,7 @@ namespace NGA.Producer
             _jfYuRequest.Files = new Dictionary<string, string> { { "file", "code.png" } };
             _jfYuRequest.RequestData = $"token={token}&expired_at={DateTime.Now.AddMinutes(10).ToString("yyyy-MM-dd HH:mm:ss")}&permission=1";
             var imgae = await _jfYuRequest.SendAsync();
-            var imgurl = JsonConvert.DeserializeObject<ResponseModel>(imgae).Data.Links.Url;
+            var imgurl = JsonConvert.DeserializeObject<ResponseModel>(imgae)?.Data.Links.Url;
 
             _jfYuRequest = new JfYuHttpRequest();
             _jfYuRequest.Url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
@@ -171,7 +171,7 @@ namespace NGA.Producer
             });
 
             var codeHtml = await _jfYuRequest.SendAsync();
-            return JsonConvert.DeserializeObject<ApiResponse>(codeHtml).Choices.FirstOrDefault().Message.Content;
+            return JsonConvert.DeserializeObject<ApiResponse>(codeHtml)?.Choices.FirstOrDefault()?.Message.Content;
 
         }
     }

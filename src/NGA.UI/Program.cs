@@ -1,5 +1,4 @@
-using jfYu.Core.Data.Extension;
-using jfYu.Core.Data.Service;
+using JfYu.Data.Extension;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -30,7 +29,7 @@ builder.Services.AddSession(options =>
 });
 
 
-builder.Services.AddJfYuDbContextService<DataContext>(options =>
+builder.Services.AddJfYuDbContext<DataContext>(options =>
 {
     builder.Configuration.GetSection("ConnectionStrings").Bind(options);
 });

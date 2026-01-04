@@ -1,8 +1,8 @@
-﻿using HtmlAgilityPack;
-using jfYu.Core.Data.Service;
-using jfYu.Core.jfYuRequest;
-using jfYu.Core.RabbitMQ;
-using jfYu.Core.Redis.Interface;
+using HtmlAgilityPack;
+using JfYu.Data.Service;
+using JfYu.RabbitMQ;
+using JfYu.Redis.Interface;
+using JfYu.Request;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -34,17 +34,17 @@ namespace NGA.Producer
             _ejiaimg = ejiaimg.Value;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        { 
+        {
             int consumerCount = _ejiaimg.ConsumerCount;
             var tasks = new List<Task>();
             for (int i = 0; i < consumerCount; i++)
             {
                 var taskId = i + 1;
-                tasks.Add(Task.Run(() =>
+                tasks.Add(Task.Run(async () =>
                 {
                     var scope = _scopeFactory.CreateScope();
                     var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-                    var channel = _rabbitMQService.Receive("topic", async q => await HandleTopicAsync(q, taskId));
+                    var channel = await _rabbitMQService.ReceiveAsync<string>("topic", async q => await HandleTopicAsync(q, taskId));
                 }, stoppingToken));
             }
             await Task.WhenAll(tasks);
@@ -54,8 +54,10 @@ namespace NGA.Producer
         /// <summary>
         /// 准备开始
         /// </summary>     
-        protected async Task<bool> HandleTopicAsync(string tid, int taskId)
+        protected async Task<bool> HandleTopicAsync(string? tid, int taskId)
         {
+            if (string.IsNullOrEmpty(tid))
+                return true;
             using var scope = _scopeFactory.CreateScope();
             var _logService = scope.ServiceProvider.GetRequiredService<IService<Log, DataContext>>();
             var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
@@ -176,7 +178,8 @@ namespace NGA.Producer
             {
                 var value = $"{{{item.Value}}}}}}}";
                 var data = JsonConvert.DeserializeObject<Dictionary<string, UserinfoJson>>(value);
-                anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
+                if (data != null)
+                    anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
             }
             int maxPage = 0;
             var s = $"var __PAGE = {{0:'/read.php?tid={t.Tid}',";
@@ -244,7 +247,7 @@ namespace NGA.Producer
                     await GetUserInfo(replay.Uid);
                     if (replay.Uid.StartsWith("-1"))
                     {
-                        UserinfoJson uij;
+                        UserinfoJson? uij;
                         var a = anonymous.TryGetValue(replay.Uid, out uij);
                         if (uij != null)
                         {
@@ -271,7 +274,7 @@ namespace NGA.Producer
                 }
             }
 
-            return new Tuple<int, bool>(lastsort, maxPage > page ? false : true); 
+            return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
             // 获取用户信息     
             async Task GetUserInfo(string uid)
             {
@@ -354,7 +357,7 @@ namespace NGA.Producer
             var d1 = doc.DocumentNode.SelectNodes("//script").Where(q => q.InnerText.Trim().ToString().StartsWith($"ubbcode.attach.load('postattach{floor.Sort}'"));
             if (d1 != null && d1.Count() > 0)
             {
-                var m = Regex.Matches(d1.FirstOrDefault().InnerText, @"url:'(.+?)',.+?type:'(.+?)'", RegexOptions.IgnoreCase);
+                var m = Regex.Matches(d1.First().InnerText, @"url:'(.+?)',.+?type:'(.+?)'", RegexOptions.IgnoreCase);
                 foreach (Match item in m)
                 {
                     var type = item.Groups[2].Value;
@@ -458,7 +461,14 @@ namespace NGA.Producer
                     ta += _as[i] + ",";
                     if (_as[i].ToCharArray().Count(x => x == '\'') == 1)
                     {
-                        t.Add(ta.Substring(0, ta.Length - 1).Replace("'", ""));
+                        if (ta.Length > 0)
+                        {
+                            t.Add(ta.Substring(0, ta.Length - 1).Replace("'", ""));
+                        }
+                        else
+                        {
+                            t.Add(ta.Replace("'", ""));
+                        }
                         ta = "";
                     }
                 }
@@ -484,9 +494,24 @@ namespace NGA.Producer
             for (var j = 0; j < 6; j++)
             {
                 if (j == 0 || j == 3)
-                    n += t1.Substring(Convert.ToInt32("0x0" + aname.Substring(i + 1, 1), 16), 1);
+                {
+                    if (i + 1 >= aname.Length)
+                        return aname;
+                    var hexValue = Convert.ToInt32("0x0" + aname.Substring(i + 1, 1), 16);
+                    if (hexValue < 0 || hexValue >= t1.Length)
+                        return aname;
+                    n += t1.Substring(hexValue, 1);
+                }
                 else if (j < 6)
-                    n += t2.Substring(Convert.ToInt32("0x" + aname.Substring(i, 2), 16), 1);
+                {
+                    if (i + 1 >= aname.Length)
+                        return aname;
+                    var hexValue = Convert.ToInt32("0x" + aname.Substring(i, 2), 16);
+
+                    if (hexValue < 0 || hexValue >= t2.Length)
+                        return aname;
+                    n += t2.Substring(hexValue, 1);
+                }
                 i += 2;
             }
             return n;

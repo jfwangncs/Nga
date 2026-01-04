@@ -1,5 +1,5 @@
-﻿using jfYu.Core.Data.Model;
-using jfYu.Core.Data.Service;
+using JfYu.Data.Model;
+using JfYu.Data.Service;
 using NGA.Models;
 using System.Threading.Tasks;
 

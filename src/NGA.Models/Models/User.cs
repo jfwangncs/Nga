@@ -1,4 +1,4 @@
-﻿using jfYu.Core.Data.Model;
+using JfYu.Data.Model;
 using System.ComponentModel.DataAnnotations;
 
 namespace NGA.Models

@@ -1,7 +1,7 @@
-﻿using jfYu.Core.Data.Context;
-using jfYu.Core.Data.Extension;
-using jfYu.Core.Data.Model;
-using jfYu.Core.Data.Service;
+using JfYu.Data.Context;
+using JfYu.Data.Extension;
+using JfYu.Data.Model;
+using JfYu.Data.Service;
 using NGA.Models;
 using System.Linq;
 using System.Threading.Tasks;

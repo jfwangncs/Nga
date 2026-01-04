@@ -1,4 +1,4 @@
-﻿using jfYu.Core.Data.Model;
+using JfYu.Data.Model;
 using System.ComponentModel.DataAnnotations;
 
 namespace NGA.Models
@@ -26,7 +26,7 @@ namespace NGA.Models
         [MaxLength(50)]
         public string PostDate { get; set; }
         public string Content { get; set; }
-        [MaxLength(30)]
+        [MaxLength(50)]
         public string QuotePid { get; set; }
 
     }

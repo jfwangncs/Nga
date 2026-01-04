@@ -1,5 +1,5 @@
-﻿using jfYu.Core.Data.Extension;
-using jfYu.Core.Data.Service;
+using JfYu.Data.Extension;
+using JfYu.Data.Service;
 using Microsoft.AspNetCore.Mvc;
 using NGA.Models;
 using NGA.UI.Services;
