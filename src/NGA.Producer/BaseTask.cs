@@ -19,7 +19,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace NGA.Producer
+namespace NGA.Console
 {
     public abstract class BaseTask : BackgroundService
     {

@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace NGA.Producer
+namespace NGA.Console
 {
     public class UnixTime
     {

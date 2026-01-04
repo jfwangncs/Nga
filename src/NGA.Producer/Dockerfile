@@ -11,19 +11,19 @@ ENV ASPNETCORE_APPLICATION=${APPLICATION_NAME}
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["NGA.Producer/NGA.Producer.csproj", "NGA.Producer/"] 
+COPY ["NGA.Console/NGA.Console.csproj", "NGA.Console/"] 
 COPY ["NGA.Models/NGA.Models.csproj", "NGA.Models/"]
-RUN dotnet restore "./NGA.Producer/./NGA.Producer.csproj"
+RUN dotnet restore "./NGA.Console/./NGA.Console.csproj"
 COPY . .
-WORKDIR "/src/NGA.Producer"
-RUN dotnet build "./NGA.Producer.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/NGA.Console"
+RUN dotnet build "./NGA.Console.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./NGA.Producer.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./NGA.Console.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENV ASPNETCORE_HTTP_PORT=
-ENTRYPOINT ["dotnet", "NGA.Producer.dll"]
+ENTRYPOINT ["dotnet", "NGA.Console.dll"]

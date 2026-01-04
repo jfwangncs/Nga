@@ -11,12 +11,14 @@ using NGA.Models.Constant;
 using NLog;
 using NLog.Extensions.Logging;
 using System;
+using System.Diagnostics;
 using System.Text;
 
-namespace NGA.Producer
+namespace NGA.Console
 {
     class Program
     {
+        public static readonly ActivitySource ActivitySource = new("NGA.Console");
         static void Main(string[] args)
         {
             var logger = LogManager.Setup().GetCurrentClassLogger();
