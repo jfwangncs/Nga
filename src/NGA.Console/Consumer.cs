@@ -12,8 +12,10 @@ using NGA.Models;
 using NGA.Models.Constant;
 using NGA.Models.Entity;
 using NGA.Models.Models;
+using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -65,9 +67,10 @@ namespace NGA.Console
         protected async Task<bool> HandleTopicAsync(string? tid, int taskId)
         {
             _guid = Guid.NewGuid().ToString("n");
+            using var activity = new ActivitySource(Program.ServiceName).StartActivity("producer.run", ActivityKind.Internal);
             if (string.IsNullOrEmpty(tid))
                 return true;
-            using var scope = _scopeFactory.CreateScope(); 
+            using var scope = _scopeFactory.CreateScope();
             var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
             var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
             var _replayService = scope.ServiceProvider.GetRequiredService<IService<Replay, DataContext>>();
@@ -81,7 +84,10 @@ namespace NGA.Console
                 return true;
             if (!await _redisService.LockTakeAsync(topic.Tid, TimeSpan.FromHours(1)))
                 return true;
-
+            activity?.SetTag("run.guid", _guid);
+            activity?.SetTag("topic.tid", tid);
+            activity?.SetTag("topic.title", topic.Title);
+            activity?.SetTag("topic.startNum", topic.ReptileNum);
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
             var originalNum = 0;
             var reptileNum = 0;
@@ -107,18 +113,23 @@ namespace NGA.Console
                 } while (true);
                 return true;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
+                activity?.AddException(ex);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 _logger.LogWarning("{Guid}: {TaskId}-{Tid}-{Title}超时，发回继续处理", _guid, taskId, topic.Tid, topic.Title);
                 return false;
             }
             catch (Exception ex)
             {
+                activity?.AddException(ex);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 _logger.LogError(ex, "{Guid}: {TaskId}-{Tid}-{Title}发生错误", _guid, taskId, topic.Tid, topic.Title);
                 return false;
             }
             finally
             {
+                activity?.SetTag("topic.endNum", topic.ReptileNum);
                 _logger.LogInformation("{Guid}: {TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", _guid, taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
                 await _redisService.LockReleaseAsync(topic.Tid);
             }
@@ -256,7 +267,7 @@ namespace NGA.Console
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "{Guid}: {TaskId}-{Tid}-{Title}-{Page}读取楼层出错", _guid, taskId, topic.Tid, topic.Title,page); 
+                    _logger.LogError(ex, "{Guid}: {TaskId}-{Tid}-{Title}-{Page}读取楼层出错", _guid, taskId, topic.Tid, topic.Title, page);
                 }
             }
 

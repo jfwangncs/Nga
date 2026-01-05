@@ -11,8 +11,10 @@ using NGA.Models;
 using NGA.Models.Constant;
 using NGA.Models.Entity;
 using NGA.Models.Models;
+using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -36,7 +38,7 @@ namespace NGA.Console
         public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequestFactory httpClientFactory, IJfYuRequest request, IRedisService redisService)
         {
             _logger = logger;
-            _ngaClient = httpClientFactory.CreateRequest(HttpClientName.NgaClientName); 
+            _ngaClient = httpClientFactory.CreateRequest(HttpClientName.NgaClientName);
             _scopeFactory = scopeFactory;
             _redisService = redisService;
         }
@@ -49,10 +51,13 @@ namespace NGA.Console
             do
             {
                 var guid = Guid.NewGuid().ToString("n");
-                using var scope = _scopeFactory.CreateScope(); 
+                using var activity = new ActivitySource(Program.ServiceName).StartActivity("producer.run", ActivityKind.Internal);
+                activity?.SetTag("run.guid", guid); 
+                activity?.SetTag("start.page", startPage);
+                using var scope = _scopeFactory.CreateScope();
                 var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
                 var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
-                var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>(); 
+                var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
                 _token = await _redisService.GetAsync<NGBToken>("Token");
                 _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
                 int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
@@ -136,9 +141,12 @@ namespace NGA.Console
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "获取列表出错");
+                        activity?.AddException(ex);
+                        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                         await RandomDelayExtension.GetRandomDelayAsync();
                         continue;
                     }
+                    activity?.SetTag("queue.count", queueTids.Count);
                     await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
                     _logger.LogInformation("{Guid}:共发送{count}条到队列", guid, queueTids.Count);
                     queueTids = [];
