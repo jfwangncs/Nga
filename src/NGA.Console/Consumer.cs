@@ -25,7 +25,7 @@ using System.Threading.Tasks;
 namespace NGA.Console
 {
     class Consumer : BackgroundService
-    { 
+    {
         private NGBToken? _token;
         string ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";//All 爬取所有 New爬取新回复   
         private ILogger<Consumer> _logger;
@@ -62,7 +62,7 @@ namespace NGA.Console
         /// 准备开始
         /// </summary>     
         protected async Task<bool> HandleTopicAsync(string? tid, int taskId)
-        { 
+        {
             using var activity = new ActivitySource(Program.ServiceName).StartActivity("consumer.run", ActivityKind.Internal);
             if (string.IsNullOrEmpty(tid))
                 return true;
@@ -79,10 +79,11 @@ namespace NGA.Console
             if (topic == null)
                 return true;
             if (!await _redisService.LockTakeAsync(topic.Tid, TimeSpan.FromHours(1)))
-                return true; 
-            activity?.SetTag("topic.tid", tid);
-            activity?.SetTag("topic.title", topic.Title);
-            activity?.SetTag("topic.startNum", topic.ReptileNum);
+                return true;
+            using var childActivity = new ActivitySource(Program.ServiceName).StartActivity("process", ActivityKind.Internal);
+            childActivity?.SetTag("topic.tid", tid);
+            childActivity?.SetTag("topic.title", topic.Title);
+            childActivity?.SetTag("topic.startNum", topic.ReptileNum);
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
             var originalNum = 0;
             var reptileNum = 0;
@@ -124,7 +125,7 @@ namespace NGA.Console
             }
             finally
             {
-                activity?.SetTag("topic.endNum", topic.ReptileNum);
+                childActivity?.SetTag("topic.endNum", topic.ReptileNum);
                 _logger.LogInformation("{TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
                 await _redisService.LockReleaseAsync(topic.Tid);
             }

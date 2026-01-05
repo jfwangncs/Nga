@@ -59,8 +59,9 @@ namespace NGA.Console
                 var queueTids = new List<string>();
                 foreach (var fid in fids)
                 {
-                    activity?.SetTag("start.page", startPage);
-                    activity?.SetTag("start.fid", fid);
+                    using var childActivity = new ActivitySource(Program.ServiceName).StartActivity("process", ActivityKind.Internal);
+                    childActivity?.SetTag("process.page", startPage);
+                    childActivity?.SetTag("process.fid", fid);
                     try
                     {
                         _ngaClient.Url = $"https://bbs.nga.cn/thread.php?fid={fid}&page={startPage}&order_by=lastpostdesc";
@@ -143,7 +144,7 @@ namespace NGA.Console
                         await RandomDelayExtension.GetRandomDelayAsync();
                         continue;
                     }
-                    activity?.SetTag("queue.count", queueTids.Count);
+                    childActivity?.SetTag("process.queueCount", queueTids.Count);
                     await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
                     _logger.LogInformation("共发送{count}条到队列", queueTids.Count);
                     queueTids = [];

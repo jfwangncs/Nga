@@ -1,7 +1,6 @@
 using JfYu.Data.Extension;
 using JfYu.RabbitMQ;
 using JfYu.Redis.Extensions;
-using JfYu.Request;
 using JfYu.Request.Extension;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,7 +57,10 @@ namespace NGA.Console
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddProcessInstrumentation()
-                    .AddPrometheusExporter());
+                    .AddPrometheusHttpListener(options =>
+                    {
+                        options.UriPrefixes = ["http://localhost:8080/"];  // 监听 8080
+                    }));
 
                 builder.Logging.ClearProviders(); // 清除默认的日志提供程序
                 builder.Logging.AddNLog(); // 添加 NLog 
