@@ -12,13 +12,11 @@ using NGA.Models;
 using NGA.Models.Constant;
 using NGA.Models.Entity;
 using NGA.Models.Models;
-using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -27,8 +25,7 @@ using System.Threading.Tasks;
 namespace NGA.Console
 {
     class Consumer : BackgroundService
-    {
-        private string _guid = "";
+    { 
         private NGBToken? _token;
         string ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";//All 爬取所有 New爬取新回复   
         private ILogger<Consumer> _logger;
@@ -65,9 +62,8 @@ namespace NGA.Console
         /// 准备开始
         /// </summary>     
         protected async Task<bool> HandleTopicAsync(string? tid, int taskId)
-        {
-            _guid = Guid.NewGuid().ToString("n");
-            using var activity = new ActivitySource(Program.ServiceName).StartActivity("producer.run", ActivityKind.Internal);
+        { 
+            using var activity = new ActivitySource(Program.ServiceName).StartActivity("consumer.run", ActivityKind.Internal);
             if (string.IsNullOrEmpty(tid))
                 return true;
             using var scope = _scopeFactory.CreateScope();
@@ -83,8 +79,7 @@ namespace NGA.Console
             if (topic == null)
                 return true;
             if (!await _redisService.LockTakeAsync(topic.Tid, TimeSpan.FromHours(1)))
-                return true;
-            activity?.SetTag("run.guid", _guid);
+                return true; 
             activity?.SetTag("topic.tid", tid);
             activity?.SetTag("topic.title", topic.Title);
             activity?.SetTag("topic.startNum", topic.ReptileNum);
@@ -117,20 +112,20 @@ namespace NGA.Console
             {
                 activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                _logger.LogWarning("{Guid}: {TaskId}-{Tid}-{Title}超时，发回继续处理", _guid, taskId, topic.Tid, topic.Title);
+                _logger.LogWarning("{TaskId}-{Tid}-{Title}超时，发回继续处理", taskId, topic.Tid, topic.Title);
                 return false;
             }
             catch (Exception ex)
             {
                 activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                _logger.LogError(ex, "{Guid}: {TaskId}-{Tid}-{Title}发生错误", _guid, taskId, topic.Tid, topic.Title);
+                _logger.LogError(ex, "{TaskId}-{Tid}-{Title}发生错误", taskId, topic.Tid, topic.Title);
                 return false;
             }
             finally
             {
                 activity?.SetTag("topic.endNum", topic.ReptileNum);
-                _logger.LogInformation("{Guid}: {TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", _guid, taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
+                _logger.LogInformation("{TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
                 await _redisService.LockReleaseAsync(topic.Tid);
             }
         }
@@ -153,7 +148,7 @@ namespace NGA.Console
             }
             if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
             {
-                _logger.LogInformation("{Guid}:用户登录", _guid);
+                _logger.LogInformation("用户登录");
                 using var scope = _scopeFactory.CreateScope();
                 var _loginHelper = scope.ServiceProvider.GetRequiredService<ILoginHelper>();
                 await _loginHelper.LoginAsync();
@@ -162,7 +157,7 @@ namespace NGA.Console
 
             if (_ngaClient.StatusCode != HttpStatusCode.OK)
             {
-                _logger.LogWarning("{Guid}: {TaskId}-{Tid}-{Title}-{Html}状态不正确,", _guid, taskId, topic.Tid, topic.Title, html);
+                _logger.LogWarning("{TaskId}-{Tid}-{Title}-{Html}状态不正确,", taskId, topic.Tid, topic.Title, html);
                 return new Tuple<int, bool>(-1, true);
             }
             htmlDocument.LoadHtml(html);
@@ -267,7 +262,7 @@ namespace NGA.Console
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "{Guid}: {TaskId}-{Tid}-{Title}-{Page}读取楼层出错", _guid, taskId, topic.Tid, topic.Title, page);
+                    _logger.LogError(ex, "{TaskId}-{Tid}-{Title}-{Page}读取楼层出错", taskId, topic.Tid, topic.Title, page);
                 }
             }
 

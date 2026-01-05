@@ -11,13 +11,11 @@ using NGA.Models;
 using NGA.Models.Constant;
 using NGA.Models.Entity;
 using NGA.Models.Models;
-using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -50,10 +48,7 @@ namespace NGA.Console
             int startPage = 1;
             do
             {
-                var guid = Guid.NewGuid().ToString("n");
                 using var activity = new ActivitySource(Program.ServiceName).StartActivity("producer.run", ActivityKind.Internal);
-                activity?.SetTag("run.guid", guid); 
-                activity?.SetTag("start.page", startPage);
                 using var scope = _scopeFactory.CreateScope();
                 var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
                 var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
@@ -64,6 +59,8 @@ namespace NGA.Console
                 var queueTids = new List<string>();
                 foreach (var fid in fids)
                 {
+                    activity?.SetTag("start.page", startPage);
+                    activity?.SetTag("start.fid", fid);
                     try
                     {
                         _ngaClient.Url = $"https://bbs.nga.cn/thread.php?fid={fid}&page={startPage}&order_by=lastpostdesc";
@@ -78,7 +75,7 @@ namespace NGA.Console
 
                         if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
                         {
-                            _logger.LogInformation("{Guid}:用户登录", guid);
+                            _logger.LogInformation("用户登录");
                             var _loginHelper = scope.ServiceProvider.GetRequiredService<ILoginHelper>();
                             await _loginHelper.LoginAsync();
                             continue;
@@ -133,7 +130,7 @@ namespace NGA.Console
                                     await _topicService.UpdateAsync(topic);
                                     queueTids.Add(t.Tid);
                                 }
-                                _logger.LogInformation("{Guid}:FID:{FID},TID:{TID},{Title}", guid, fid, t.Tid, t.Title);
+                                _logger.LogInformation("FID:{FID},TID:{TID},{Title}", fid, t.Tid, t.Title);
                             }
                         }
 
@@ -148,7 +145,7 @@ namespace NGA.Console
                     }
                     activity?.SetTag("queue.count", queueTids.Count);
                     await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
-                    _logger.LogInformation("{Guid}:共发送{count}条到队列", guid, queueTids.Count);
+                    _logger.LogInformation("共发送{count}条到队列", queueTids.Count);
                     queueTids = [];
                 }
                 await RandomDelayExtension.GetRandomDelayAsync();
