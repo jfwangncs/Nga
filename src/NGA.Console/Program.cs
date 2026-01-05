@@ -59,7 +59,7 @@ namespace NGA.Console
                     .AddProcessInstrumentation()
                     .AddPrometheusHttpListener(options =>
                     {
-                        options.UriPrefixes = ["http://localhost:8080/"];  // 监听 8080
+                        options.UriPrefixes = ["http://+:9464/"];
                     }));
 
                 builder.Logging.ClearProviders(); // 清除默认的日志提供程序
