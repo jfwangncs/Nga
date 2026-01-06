@@ -28,18 +28,16 @@ namespace NGA.Console
     {
         private NGBToken? _token;
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly ILogger<Producer> _logger;
-        private readonly IJfYuRequest _ngaClient;
+        private readonly ILogger<Producer> _logger; 
         private readonly IRedisService _redisService;
         private readonly string QUEUE_NAME = "ex_topic";
         private List<Black> _blackList = [];
         private static readonly Meter _meter = new Meter(Program.ServiceName);
         private static readonly Counter<long> _queuedItemsCounter = _meter.CreateCounter<long>("nga_producer_queued_items_total", "items", "Total number of items queued by producer");
 
-        public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequestFactory httpClientFactory, IJfYuRequest request, IRedisService redisService)
+        public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequest request, IRedisService redisService)
         {
-            _logger = logger;
-            _ngaClient = httpClientFactory.CreateRequest(HttpClientName.NgaClientName);
+            _logger = logger; 
             _scopeFactory = scopeFactory;
             _redisService = redisService;
         }
@@ -56,8 +54,7 @@ namespace NGA.Console
                 _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
             }
             _token = await _redisService.GetAsync<NGBToken>("Token");
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
+            
             int startPage = 1;
             do
             {
@@ -65,9 +62,11 @@ namespace NGA.Console
                 using var scope = _scopeFactory.CreateScope();
                 var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
                 var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-
+                var _ngaClient = scope.ServiceProvider.GetRequiredService<IJfYuRequest>();
                 int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
                 var queueTids = new List<string>();
+                _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
+                _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
                 foreach (var fid in fids)
                 {
                     using var childActivity = new ActivitySource(Program.ServiceName).StartActivity("process", ActivityKind.Internal);

@@ -83,8 +83,9 @@ namespace NGA.Console
                     builder.Services.AddHostedService<Producer>();
                 else
                     builder.Services.AddHostedService<Consumer>();
-                builder.Services.AddJfYuHttpClient(q => { q.HttpClientName = HttpClientName.NgaClientName; }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
-                builder.Services.AddJfYuHttpClient(q => { q.HttpClientName = HttpClientName.QianWenClientName; }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
+                //builder.Services.AddJfYuHttpClient(q => { q.HttpClientName = HttpClientName.NgaClientName; }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
+                //builder.Services.AddJfYuHttpClient(q => { q.HttpClientName = HttpClientName.QianWenClientName; }, q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
+                builder.Services.AddJfYuHttpRequest(q => q.LoggingFields = JfYu.Request.Enum.JfYuLoggingFields.None);
                 builder.Services.Configure<ConsoleOptions>(config.GetSection("Console"));
                 builder.Services.AddScoped<ILoginHelper, LoginHelper>();
                 using IHost host = builder.Build();

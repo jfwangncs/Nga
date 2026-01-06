@@ -32,24 +32,21 @@ namespace NGA.Console
         private ILogger<Consumer> _logger;
         private readonly ConsoleOptions _consoleOptions;
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IJfYuRequest _ngaClient;
         private static readonly Meter _meter = new Meter(Program.ServiceName);
         private static readonly Counter<long> _consumedItemsCounter = _meter.CreateCounter<long>("nga_consumer_consumed_items_total", "items", "Total number of items consumed by consumer");
         private readonly IRedisService _redisService;
 
-        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IJfYuRequestFactory httpClientFactory, IOptions<ConsoleOptions> consoleOptions, IRedisService redisService)
+        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IOptions<ConsoleOptions> consoleOptions, IRedisService redisService)
         {
             _logger = logger;
             _consoleOptions = consoleOptions.Value;
             _scopeFactory = scopeFactory;
-            _ngaClient = httpClientFactory.CreateRequest(HttpClientName.NgaClientName);
             _redisService = redisService;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _token ??= await _redisService.GetAsync<NGBToken>("Token");
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
+
             int consumerCount = _consoleOptions.ConsumerCount;
             var tasks = new List<Task>();
             for (int i = 0; i < consumerCount; i++)
@@ -79,7 +76,10 @@ namespace NGA.Console
             var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
             var _replayService = scope.ServiceProvider.GetRequiredService<IService<Replay, DataContext>>();
             var _replayHisService = scope.ServiceProvider.GetRequiredService<IService<ReplayHis, DataContext>>();
-            var _userService = scope.ServiceProvider.GetRequiredService<IService<User, DataContext>>();            
+            var _userService = scope.ServiceProvider.GetRequiredService<IService<User, DataContext>>();
+            var _ngaClient = scope.ServiceProvider.GetRequiredService<IJfYuRequest>();
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
             var topic = await _topicService.GetOneAsync(q => q.Tid == tid);
             if (topic == null)
                 return true;
@@ -137,193 +137,193 @@ namespace NGA.Console
                 _logger.LogInformation("{TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
                 await _redisService.LockReleaseAsync(topic.Tid);
             }
-        }
 
-        protected async Task<Tuple<int, bool>> MainAsync(Topic topic, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
-        {
-            int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
-            HtmlDocument htmlDocument = new HtmlDocument();
-            _ngaClient.Url = $"https://bbs.nga.cn/read.php?tid={topic.Tid}&page={page}";
-            _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");           
-            var html = await _ngaClient.SendAsync();
-            if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
+            async Task<Tuple<int, bool>> MainAsync(Topic topic, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
             {
-                _logger.LogInformation($"{taskId}-{topic.Title}被隐藏");
-                return new Tuple<int, bool>(-1, true);
-            }
-            if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
-            {
-                _logger.LogInformation("用户登录");
-                using var scope = _scopeFactory.CreateScope();
-                var _loginHelper = scope.ServiceProvider.GetRequiredService<ILoginHelper>();
-                await _loginHelper.LoginAsync();
-                return new Tuple<int, bool>(-1, true);
-            }
-
-            if (_ngaClient.StatusCode != HttpStatusCode.OK)
-            {
-                _logger.LogWarning("{TaskId}-{Tid}-{Title}-{Html}状态不正确,", taskId, topic.Tid, topic.Title, html);
-                return new Tuple<int, bool>(-1, true);
-            }
-            htmlDocument.LoadHtml(html);
-            HtmlNodeCollection lous = htmlDocument.DocumentNode.SelectNodes("//tr[contains(@id,'post1strow')]");
-            if (lous == null)
-                return new Tuple<int, bool>(-1, true);
-
-            var userInfoAll = htmlDocument.DocumentNode.SelectNodes("//script")?.Where(q => q.InnerText.Trim().ToString().Contains($"commonui.userInfo.setAll")).FirstOrDefault()?.InnerHtml;
-
-            if (userInfoAll == null)
-            {
-                _logger.LogInformation($"{taskId}-{topic.Title},{page}:找不到用户信息");
-                return new Tuple<int, bool>(-1, true);
-            }
-            var anonymousReg = Regex.Matches(userInfoAll, @"""-1"":{.*?username{1}.*?}", RegexOptions.IgnoreCase);
-            var anonymous = new Dictionary<string, UserinfoJson>();
-            foreach (Match item in anonymousReg)
-            {
-                var value = $"{{{item.Value}}}}}}}";
-                var data = JsonConvert.DeserializeObject<Dictionary<string, UserinfoJson>>(value);
-                if (data != null)
-                    anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
-            }
-            int maxPage = 0;
-            var s = $"var __PAGE = {{0:'/read.php?tid={topic.Tid}',";
-            var maxPageHtml = htmlDocument.DocumentNode.SelectNodes("//script").Where(q => q.InnerText.Trim().ToString().Contains(s)).FirstOrDefault()?.InnerHtml;
-            if (!string.IsNullOrEmpty(maxPageHtml))
-                maxPage = int.Parse(maxPageHtml.Replace(s, "").Split(",")[0].Split(":")[1]);
-            var lastsort = 0;
-            for (int i = lous.Count - 1; i >= 0; i--)
-            {
-
-                try
+                int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
+                HtmlDocument htmlDocument = new HtmlDocument();
+                _ngaClient.Url = $"https://bbs.nga.cn/read.php?tid={topic.Tid}&page={page}";
+                _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
+                var html = await _ngaClient.SendAsync();
+                if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
                 {
-                    var contentNode = lous[i].SelectSingleNode(".//span[contains(@id,'postcontentandsubject')]");
-                    int sort = int.Parse(contentNode.Id.Replace("postcontentandsubject", ""));
-                    if (i == lous.Count - 1)
-                    {
-                        lastsort = sort;
-                        if (sort == topic.ReptileNum && lous.Count > 1)
-                            return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
-                    }
-                    #region 如有引用回复 则保存其引用用户名称                    
-                    //回复用户名处理
-                    Regex rprg = new Regex(@"\[b\]Reply to.*?\[/b]");
-                    MatchCollection re = rprg.Matches(contentNode.InnerHtml);
-                    foreach (Match m in re)
-                    {
-                        var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\)").Match(m.Value).Groups;
-                        string uid = rgroup[1].Value;
-                        string name = rgroup[2].Value;
-                        var user = await _userService.GetOneAsync(q => q.Uid == uid);
-                        if (user != null)
-                        {
-                            user.UserName = name;
-                            await _userService.UpdateAsync(user);
-                        }
-                    }
-
-                    //引用回复用户名处理
-                    Regex quoterg = new Regex(@"\[quote\].*?\[/quote\]");
-                    MatchCollection quotergmc = quoterg.Matches(contentNode.InnerHtml);
-                    foreach (Match m in quotergmc)
-                    {
-                        var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\):\[/b\](.*?)\[").Match(m.Value).Groups;
-                        string uid = rgroup[1].Value;
-                        string name = rgroup[2].Value;
-                        var user = await _userService.GetOneAsync(q => q.Uid == uid);
-                        if (user != null)
-                        {
-                            user.UserName = name;
-                            await _userService.UpdateAsync(user);
-                        }
-                    }
-                    #endregion
-
-                    var replay = await _replayService.GetOneAsync(x => x.Sort == sort && x.Tid == topic.Tid);
-                    if (replay == null)
-                        replay = new Replay();
-                    replay.Tid = topic.Tid;
-                    replay.Sort = sort;
-                    //获取replayid
-                    if (sort != 0)
-                        replay.Pid = lous[i].SelectSingleNode(".//a[contains(@id,'pid')]").Id.Replace("pid", "").Replace("Anchor", "");
-                    GetContextData(replay, htmlDocument, contentNode.ChildNodes[4].InnerHtml);
-                    GetFloorData(replay, htmlDocument);
-                    await GetUserInfo(replay.Uid);
-                    if (replay.Uid.StartsWith("-1"))
-                    {
-                        UserinfoJson? uij;
-                        var a = anonymous.TryGetValue(replay.Uid, out uij);
-                        if (uij != null)
-                        {
-                            replay.UName = GetName(uij.Username);
-                        }
-                    }
-
-                    if (replay.Id == 0)
-                        await _replayService.AddAsync(replay);
-                    else
-                        await _replayService.UpdateAsync(replay);
+                    _logger.LogInformation("用户登录");
+                    using var scope = _scopeFactory.CreateScope();
+                    var _loginHelper = scope.ServiceProvider.GetRequiredService<ILoginHelper>();
+                    await _loginHelper.LoginAsync();
+                    return new Tuple<int, bool>(-1, true);
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "{TaskId}-{Tid}-{Title}-{Page}读取楼层出错", taskId, topic.Tid, topic.Title, page);
-                }
-            }
 
-            return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
-            // 获取用户信息     
-            async Task GetUserInfo(string uid)
-            {
-                if (uid == null || uid.StartsWith("-") || uid == "0")
-                    return;
-                var user = await _userService.GetOneAsync(q => q.Uid == uid);
-                if (user == null || (DateTime.Now - user.UpdatedTime).Days > 7)
+                if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
                 {
-                    if (user == null)
-                        user = new User();
-                    var html = "";
+                    _logger.LogInformation($"{taskId}-{topic.Title}被隐藏");
+                    return new Tuple<int, bool>(-1, true);
+                }              
+
+                if (_ngaClient.StatusCode != HttpStatusCode.OK)
+                {
+                    _logger.LogWarning("{TaskId}-{Tid}-{Title}-{Html}状态不正确,", taskId, topic.Tid, topic.Title, html);
+                    return new Tuple<int, bool>(-1, true);
+                }
+                htmlDocument.LoadHtml(html);
+                HtmlNodeCollection lous = htmlDocument.DocumentNode.SelectNodes("//tr[contains(@id,'post1strow')]");
+                if (lous == null)
+                    return new Tuple<int, bool>(-1, true);
+
+                var userInfoAll = htmlDocument.DocumentNode.SelectNodes("//script")?.Where(q => q.InnerText.Trim().ToString().Contains($"commonui.userInfo.setAll")).FirstOrDefault()?.InnerHtml;
+
+                if (userInfoAll == null)
+                {
+                    _logger.LogInformation($"{taskId}-{topic.Title},{page}:找不到用户信息");
+                    return new Tuple<int, bool>(-1, true);
+                }
+                var anonymousReg = Regex.Matches(userInfoAll, @"""-1"":{.*?username{1}.*?}", RegexOptions.IgnoreCase);
+                var anonymous = new Dictionary<string, UserinfoJson>();
+                foreach (Match item in anonymousReg)
+                {
+                    var value = $"{{{item.Value}}}}}}}";
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, UserinfoJson>>(value);
+                    if (data != null)
+                        anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
+                }
+                int maxPage = 0;
+                var s = $"var __PAGE = {{0:'/read.php?tid={topic.Tid}',";
+                var maxPageHtml = htmlDocument.DocumentNode.SelectNodes("//script").Where(q => q.InnerText.Trim().ToString().Contains(s)).FirstOrDefault()?.InnerHtml;
+                if (!string.IsNullOrEmpty(maxPageHtml))
+                    maxPage = int.Parse(maxPageHtml.Replace(s, "").Split(",")[0].Split(":")[1]);
+                var lastsort = 0;
+                for (int i = lous.Count - 1; i >= 0; i--)
+                {
+
                     try
                     {
-                        int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30)); 
-                        _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}"; 
-                        html = await _ngaClient.SendAsync();
-                        user.Uid = uid;
-                        if (string.IsNullOrEmpty(html))
-                            return;
-                        if (html.Contains("参数错误"))
-                            return;
-                        if (html.Contains("找不到用户"))
-                            return;
-                        if (html.Contains("无此用户"))
-                            return;
-                        var rg = Regex.Match(html, "username\":.+?\"");
-                        user.UserName = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
-                        //_user.Name = hn.InnerText;
-                        rg = Regex.Match(html, "group\":.+?\"");
-                        user.Group = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
-                        rg = Regex.Match(html, "regdate\":.+?\"");
-                        user.Regdate = rg.ToString().Replace("\"", "").Replace(",", "").Split(':').ElementAtOrDefault(1) ?? "";
-                        rg = Regex.Match(html, "avatar\":.+?\"");
-                        user.Avatar = rg.ToString().Replace("\"", "").Replace("http:", "").Split(':').ElementAtOrDefault(1) ?? "";
-                        if (user.Id == 0)
-                            await _userService.AddAsync(user);
+                        var contentNode = lous[i].SelectSingleNode(".//span[contains(@id,'postcontentandsubject')]");
+                        int sort = int.Parse(contentNode.Id.Replace("postcontentandsubject", ""));
+                        if (i == lous.Count - 1)
+                        {
+                            lastsort = sort;
+                            if (sort == topic.ReptileNum && lous.Count > 1)
+                                return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
+                        }
+                        #region 如有引用回复 则保存其引用用户名称                    
+                        //回复用户名处理
+                        Regex rprg = new Regex(@"\[b\]Reply to.*?\[/b]");
+                        MatchCollection re = rprg.Matches(contentNode.InnerHtml);
+                        foreach (Match m in re)
+                        {
+                            var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\)").Match(m.Value).Groups;
+                            string uid = rgroup[1].Value;
+                            string name = rgroup[2].Value;
+                            var user = await _userService.GetOneAsync(q => q.Uid == uid);
+                            if (user != null)
+                            {
+                                user.UserName = name;
+                                await _userService.UpdateAsync(user);
+                            }
+                        }
+
+                        //引用回复用户名处理
+                        Regex quoterg = new Regex(@"\[quote\].*?\[/quote\]");
+                        MatchCollection quotergmc = quoterg.Matches(contentNode.InnerHtml);
+                        foreach (Match m in quotergmc)
+                        {
+                            var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\):\[/b\](.*?)\[").Match(m.Value).Groups;
+                            string uid = rgroup[1].Value;
+                            string name = rgroup[2].Value;
+                            var user = await _userService.GetOneAsync(q => q.Uid == uid);
+                            if (user != null)
+                            {
+                                user.UserName = name;
+                                await _userService.UpdateAsync(user);
+                            }
+                        }
+                        #endregion
+
+                        var replay = await _replayService.GetOneAsync(x => x.Sort == sort && x.Tid == topic.Tid);
+                        if (replay == null)
+                            replay = new Replay();
+                        replay.Tid = topic.Tid;
+                        replay.Sort = sort;
+                        //获取replayid
+                        if (sort != 0)
+                            replay.Pid = lous[i].SelectSingleNode(".//a[contains(@id,'pid')]").Id.Replace("pid", "").Replace("Anchor", "");
+                        GetContextData(replay, htmlDocument, contentNode.ChildNodes[4].InnerHtml);
+                        GetFloorData(replay, htmlDocument);
+                        await GetUserInfo(replay.Uid);
+                        if (replay.Uid.StartsWith("-1"))
+                        {
+                            UserinfoJson? uij;
+                            var a = anonymous.TryGetValue(replay.Uid, out uij);
+                            if (uij != null)
+                            {
+                                replay.UName = GetName(uij.Username);
+                            }
+                        }
+
+                        if (replay.Id == 0)
+                            await _replayService.AddAsync(replay);
                         else
-                            await _userService.UpdateAsync(user);
+                            await _replayService.UpdateAsync(replay);
                     }
                     catch (Exception ex)
                     {
-                        if (ex.Message.Contains("无效的 URI")) //用户头像url无效
-                            return;
-                        if (ex.Message == "远程服务器返回错误: (404) 未找到。") //用户本身头像url失效，错误日志不保存
-                            return;
-                        throw;
+                        _logger.LogError(ex, "{TaskId}-{Tid}-{Title}-{Page}读取楼层出错", taskId, topic.Tid, topic.Title, page);
                     }
                 }
 
+                return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
+                // 获取用户信息     
+                async Task GetUserInfo(string uid)
+                {
+                    if (uid == null || uid.StartsWith("-") || uid == "0")
+                        return;
+                    var user = await _userService.GetOneAsync(q => q.Uid == uid);
+                    if (user == null || (DateTime.Now - user.UpdatedTime).Days > 7)
+                    {
+                        if (user == null)
+                            user = new User();
+                        var html = "";
+                        try
+                        {
+                            int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30));
+                            _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}";
+                            html = await _ngaClient.SendAsync();
+                            user.Uid = uid;
+                            if (string.IsNullOrEmpty(html))
+                                return;
+                            if (html.Contains("参数错误"))
+                                return;
+                            if (html.Contains("找不到用户"))
+                                return;
+                            if (html.Contains("无此用户"))
+                                return;
+                            var rg = Regex.Match(html, "username\":.+?\"");
+                            user.UserName = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
+                            //_user.Name = hn.InnerText;
+                            rg = Regex.Match(html, "group\":.+?\"");
+                            user.Group = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
+                            rg = Regex.Match(html, "regdate\":.+?\"");
+                            user.Regdate = rg.ToString().Replace("\"", "").Replace(",", "").Split(':').ElementAtOrDefault(1) ?? "";
+                            rg = Regex.Match(html, "avatar\":.+?\"");
+                            user.Avatar = rg.ToString().Replace("\"", "").Replace("http:", "").Split(':').ElementAtOrDefault(1) ?? "";
+                            if (user.Id == 0)
+                                await _userService.AddAsync(user);
+                            else
+                                await _userService.UpdateAsync(user);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (ex.Message.Contains("无效的 URI")) //用户头像url无效
+                                return;
+                            if (ex.Message == "远程服务器返回错误: (404) 未找到。") //用户本身头像url失效，错误日志不保存
+                                return;
+                            throw;
+                        }
+                    }
+
+                }
             }
         }
-
 
         //获取楼层数据
         protected void GetFloorData(Replay floor, HtmlDocument doc)
@@ -509,9 +509,7 @@ namespace NGA.Console
             }
             return n;
         }
-
     }
-
 }
 
 
