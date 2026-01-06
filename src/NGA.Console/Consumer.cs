@@ -35,16 +35,21 @@ namespace NGA.Console
         private readonly IJfYuRequest _ngaClient;
         private static readonly Meter _meter = new Meter(Program.ServiceName);
         private static readonly Counter<long> _consumedItemsCounter = _meter.CreateCounter<long>("nga_consumer_consumed_items_total", "items", "Total number of items consumed by consumer");
+        private readonly IRedisService _redisService;
 
-        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IJfYuRequestFactory httpClientFactory, IOptions<ConsoleOptions> consoleOptions)
+        public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IJfYuRequestFactory httpClientFactory, IOptions<ConsoleOptions> consoleOptions, IRedisService redisService)
         {
             _logger = logger;
             _consoleOptions = consoleOptions.Value;
             _scopeFactory = scopeFactory;
             _ngaClient = httpClientFactory.CreateRequest(HttpClientName.NgaClientName);
+            _redisService = redisService;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            _token ??= await _redisService.GetAsync<NGBToken>("Token");
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
             int consumerCount = _consoleOptions.ConsumerCount;
             var tasks = new List<Task>();
             for (int i = 0; i < consumerCount; i++)
@@ -52,7 +57,7 @@ namespace NGA.Console
                 var taskId = i + 1;
                 tasks.Add(Task.Run(async () =>
                 {
-                    var scope = _scopeFactory.CreateScope();
+                    using var scope = _scopeFactory.CreateScope();
                     var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
                     var channel = await _rabbitMQService.ReceiveAsync<string>("topic", async q => await HandleTopicAsync(q, taskId));
                 }, stoppingToken));
@@ -74,10 +79,7 @@ namespace NGA.Console
             var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
             var _replayService = scope.ServiceProvider.GetRequiredService<IService<Replay, DataContext>>();
             var _replayHisService = scope.ServiceProvider.GetRequiredService<IService<ReplayHis, DataContext>>();
-            var _userService = scope.ServiceProvider.GetRequiredService<IService<User, DataContext>>();
-            var _redisService = scope.ServiceProvider.GetRequiredService<IRedisService>();
-            _token = await _redisService.GetAsync<NGBToken>("Token");
-
+            var _userService = scope.ServiceProvider.GetRequiredService<IService<User, DataContext>>();            
             var topic = await _topicService.GetOneAsync(q => q.Tid == tid);
             if (topic == null)
                 return true;
@@ -142,11 +144,7 @@ namespace NGA.Console
             int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
             HtmlDocument htmlDocument = new HtmlDocument();
             _ngaClient.Url = $"https://bbs.nga.cn/read.php?tid={topic.Tid}&page={page}";
-            _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
-            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
+            _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");           
             var html = await _ngaClient.SendAsync();
             if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
             {
@@ -287,13 +285,9 @@ namespace NGA.Console
                     var html = "";
                     try
                     {
-                        int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30));
-                        var _jfYuRequest = new JfYuHttpRequest();
-                        _jfYuRequest.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}";
-                        _jfYuRequest.RequestEncoding = Encoding.GetEncoding("GB18030");
-                        _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.ngacn.cc", Path = "/" });
-                        _jfYuRequest.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.ngacn.cc", Path = "/" });
-                        html = await _jfYuRequest.SendAsync();
+                        int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30)); 
+                        _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}"; 
+                        html = await _ngaClient.SendAsync();
                         user.Uid = uid;
                         if (string.IsNullOrEmpty(html))
                             return;

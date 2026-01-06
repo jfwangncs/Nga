@@ -48,16 +48,24 @@ namespace NGA.Console
         {
             var fids = JsonConvert.DeserializeObject<List<string>>(Environment.GetEnvironmentVariable("FID") ?? "");
             fids ??= new List<string>() { "-7", "472" };
+
+            // 启动时加载黑名单，避免每次循环都查询数据库
+            using (var initScope = _scopeFactory.CreateScope())
+            {
+                var _blackService = initScope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
+                _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
+            }
+            _token = await _redisService.GetAsync<NGBToken>("Token");
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
+            _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
             int startPage = 1;
             do
             {
                 using var activity = new ActivitySource(Program.ServiceName).StartActivity("producer.run", ActivityKind.Internal);
                 using var scope = _scopeFactory.CreateScope();
                 var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
-                var _blackService = scope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
                 var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-                _token = await _redisService.GetAsync<NGBToken>("Token");
-                _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
+
                 int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
                 var queueTids = new List<string>();
                 foreach (var fid in fids)
@@ -70,13 +78,7 @@ namespace NGA.Console
                         _ngaClient.Url = $"https://bbs.nga.cn/thread.php?fid={fid}&page={startPage}&order_by=lastpostdesc";
                         _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
                         _ngaClient.RequestHeader.AcceptEncoding = "";
-                        _ngaClient.Timeout = 10;
-                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "guestJs", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
-                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
-                        _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
                         var html = await _ngaClient.SendAsync();
-
                         if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
                         {
                             _logger.LogInformation("用户登录");
