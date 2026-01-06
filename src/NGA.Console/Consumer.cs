@@ -15,6 +15,7 @@ using NGA.Models.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -32,6 +33,8 @@ namespace NGA.Console
         private readonly ConsoleOptions _consoleOptions;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IJfYuRequest _ngaClient;
+        private static readonly Meter _meter = new Meter(Program.ServiceName);
+        private static readonly Counter<long> _consumedItemsCounter = _meter.CreateCounter<long>("nga_consumer_consumed_items_total", "items", "Total number of items consumed by consumer");
 
         public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IJfYuRequestFactory httpClientFactory, IOptions<ConsoleOptions> consoleOptions)
         {
@@ -107,6 +110,7 @@ namespace NGA.Console
                     await RandomDelayExtension.GetRandomDelayAsync();
                     cts.Token.ThrowIfCancellationRequested();
                 } while (true);
+                _consumedItemsCounter.Add(1, new KeyValuePair<string, object?>("fid", topic.Fid), new KeyValuePair<string, object?>("status", "success"));
                 return true;
             }
             catch (OperationCanceledException ex)
@@ -114,6 +118,7 @@ namespace NGA.Console
                 activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 _logger.LogWarning("{TaskId}-{Tid}-{Title},超时发回继续处理", taskId, topic.Tid, topic.Title);
+                _consumedItemsCounter.Add(1, new KeyValuePair<string, object?>("fid", topic.Fid), new KeyValuePair<string, object?>("status", "timeout"));
                 return false;
             }
             catch (Exception ex)
@@ -121,6 +126,7 @@ namespace NGA.Console
                 activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 _logger.LogError(ex, "{TaskId}-{Tid}-{Title},发生错误", taskId, topic.Tid, topic.Title);
+                _consumedItemsCounter.Add(1, new KeyValuePair<string, object?>("fid", topic.Fid), new KeyValuePair<string, object?>("status", "error"));
                 return false;
             }
             finally
@@ -141,7 +147,7 @@ namespace NGA.Console
             _ngaClient.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
             _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
             _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
-            var html = await _ngaClient.SendAsync(); 
+            var html = await _ngaClient.SendAsync();
             if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
             {
                 _logger.LogInformation($"{taskId}-{topic.Title}被隐藏");

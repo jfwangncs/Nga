@@ -14,6 +14,7 @@ using NGA.Models.Models;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -32,6 +33,8 @@ namespace NGA.Console
         private readonly IRedisService _redisService;
         private readonly string QUEUE_NAME = "ex_topic";
         private List<Black> _blackList = [];
+        private static readonly Meter _meter = new Meter(Program.ServiceName);
+        private static readonly Counter<long> _queuedItemsCounter = _meter.CreateCounter<long>("nga_producer_queued_items_total", "items", "Total number of items queued by producer");
 
         public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequestFactory httpClientFactory, IJfYuRequest request, IRedisService redisService)
         {
@@ -146,6 +149,7 @@ namespace NGA.Console
                     }
                     childActivity?.SetTag("process.queueCount", queueTids.Count);
                     await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
+                    _queuedItemsCounter.Add(queueTids.Count, new KeyValuePair<string, object?>("fid", fid));
                     _logger.LogInformation("共发送{count}条到队列", queueTids.Count);
                     queueTids = [];
                 }
