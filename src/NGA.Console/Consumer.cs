@@ -113,14 +113,14 @@ namespace NGA.Console
             {
                 activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                _logger.LogWarning("{TaskId}-{Tid}-{Title}超时，发回继续处理", taskId, topic.Tid, topic.Title);
+                _logger.LogWarning("{TaskId}-{Tid}-{Title},超时发回继续处理", taskId, topic.Tid, topic.Title);
                 return false;
             }
             catch (Exception ex)
             {
                 activity?.AddException(ex);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                _logger.LogError(ex, "{TaskId}-{Tid}-{Title}发生错误", taskId, topic.Tid, topic.Title);
+                _logger.LogError(ex, "{TaskId}-{Tid}-{Title},发生错误", taskId, topic.Tid, topic.Title);
                 return false;
             }
             finally
@@ -141,7 +141,7 @@ namespace NGA.Console
             _ngaClient.RequestCookies.Add(new Cookie() { Name = "lastvisit", Value = timeStamp.ToString(), Domain = ".bbs.nga.cn", Path = "/" });
             _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
             _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
-            var html = await _ngaClient.SendAsync();
+            var html = await _ngaClient.SendAsync(); 
             if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
             {
                 _logger.LogInformation($"{taskId}-{topic.Title}被隐藏");
