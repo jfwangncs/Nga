@@ -7,6 +7,14 @@ namespace NGA.Console
     {
         public static async Task GetRandomDelayAsync()
         {
+            // 如果在5:52-5:59之间，暂停30分钟
+            var now = DateTime.Now;
+            if (now.Hour == 5 && now.Minute >= 52 && now.Minute <= 59)
+            {
+                await Task.Delay(30 * 60 * 1000); // 30分钟
+                return;
+            }
+
             string speed = Environment.GetEnvironmentVariable("SPEED") ?? "slowly";
             int workmin = speed == "slowly" ? 5 : 3;
             int workmax = speed == "slowly" ? 30 : 10;

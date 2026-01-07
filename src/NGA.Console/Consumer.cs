@@ -36,6 +36,14 @@ namespace NGA.Console
         private static readonly Counter<long> _consumedItemsCounter = _meter.CreateCounter<long>("nga_consumer_consumed_items_total", "items", "Total number of items consumed by consumer");
         private readonly IRedisService _redisService;
 
+        // 预编译正则表达式以提升性能和减少内存
+        private static readonly Regex ReplyRegex = new Regex(@"\[b\]Reply to.*?\[/b\]", RegexOptions.Compiled);
+        private static readonly Regex QuoteRegex = new Regex(@"\[quote\].*?\[/quote\]", RegexOptions.Compiled);
+        private static readonly Regex PidRegex = new Regex(@"\[pid=(.*?),.*?\]", RegexOptions.Compiled);
+        private static readonly Regex UrlRegex = new Regex(@"\[url\].*?\[/url\]", RegexOptions.Compiled);
+        private static readonly Regex ImgRegex = new Regex(@"\[img\].*?\[/img\]", RegexOptions.Compiled);
+        private static readonly Regex ExternalUrlRegex = new Regex(@"[a-zA-z]+://[^\s]*", RegexOptions.Compiled);
+
         public Consumer(IServiceScopeFactory scopeFactory, ILogger<Consumer> logger, IOptions<ConsoleOptions> consoleOptions, IRedisService redisService)
         {
             _logger = logger;
@@ -178,7 +186,7 @@ namespace NGA.Console
                     return new Tuple<int, bool>(-1, true);
                 }
                 var anonymousReg = Regex.Matches(userInfoAll, @"""-1"":{.*?username{1}.*?}", RegexOptions.IgnoreCase);
-                var anonymous = new Dictionary<string, UserinfoJson>();
+                var anonymous = new Dictionary<string, UserinfoJson>(anonymousReg.Count);
                 foreach (Match item in anonymousReg)
                 {
                     var value = $"{{{item.Value}}}}}}}";
@@ -207,8 +215,7 @@ namespace NGA.Console
                         }
                         #region 如有引用回复 则保存其引用用户名称                    
                         //回复用户名处理
-                        Regex rprg = new Regex(@"\[b\]Reply to.*?\[/b]");
-                        MatchCollection re = rprg.Matches(contentNode.InnerHtml);
+                        MatchCollection re = ReplyRegex.Matches(contentNode.InnerHtml);
                         foreach (Match m in re)
                         {
                             var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\)").Match(m.Value).Groups;
@@ -223,8 +230,7 @@ namespace NGA.Console
                         }
 
                         //引用回复用户名处理
-                        Regex quoterg = new Regex(@"\[quote\].*?\[/quote\]");
-                        MatchCollection quotergmc = quoterg.Matches(contentNode.InnerHtml);
+                        MatchCollection quotergmc = QuoteRegex.Matches(contentNode.InnerHtml);
                         foreach (Match m in quotergmc)
                         {
                             var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\):\[/b\](.*?)\[").Match(m.Value).Groups;
@@ -371,8 +377,7 @@ namespace NGA.Console
             }
             ;
             //url替换
-            Regex qariRegex = new Regex(@"\[url\].*?\[/url\]");
-            MatchCollection urls = qariRegex.Matches(_context);
+            MatchCollection urls = UrlRegex.Matches(_context);
             foreach (Match m in urls)
             {
                 var url = m.Value.Replace("[url]", "").Replace("[/url]", "");
@@ -380,30 +385,28 @@ namespace NGA.Console
                 _context = _context.Replace(m.Value, ahtml);
             }
             //图片替换
-            Regex imgrg = new Regex(@"\[img\].*?\[/img\]");
-            MatchCollection imgs = imgrg.Matches(_context);
+            MatchCollection imgs = ImgRegex.Matches(_context);
             foreach (Match m in imgs)
             {
                 var img = m.Value.Replace("[img]", "").Replace("[/img]", "").Replace(".medium.jpg", "").Replace("./", "");
                 var imghtml = "";
                 if (img.Contains("https://img.nga.178.com/attachments") || img.Contains("http://img.nga.178.com/attachments"))
                     imghtml = $" <img class='topicimg' src='{img}'/>";
-                else if (new Regex(@"[a-zA-z]+://[^\s]*").IsMatch(img)) //如果是外链 则不添加加头部
+                else if (ExternalUrlRegex.IsMatch(img)) //如果是外链 则不添加加头部
                     imghtml = $" <img class='topicimg' src='{img}'/>";
                 else
                     imghtml = $" <img class='topicimg' src='https://img.nga.178.com/attachments/{img}'/>";
                 _context = _context.Replace(m.Value, imghtml);
             }
             //回复处理
-            Regex rprg = new Regex(@"\[b\]Reply to.*?\[/b]");
-            MatchCollection re = rprg.Matches(_context);
+            MatchCollection re = ReplyRegex.Matches(_context);
             foreach (Match m in re)
             {
                 //var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\)").Match(m.Value).Groups;
                 //string id = rgroup[1].Value;
                 //string name = rgroup[2].Value;
                 //string time = rgroup[3].Value;
-                quotepid = new Regex(@"\[pid=(.*?),.*?\]").Match(m.Value).Groups[1]?.Value;
+                quotepid = PidRegex.Match(m.Value).Groups[1]?.Value;
                 //var rp = Mongo.QueryOne<Replay>(q => q.Pid == pid);
                 //string context = "";
                 //if (rp != null)
@@ -419,11 +422,10 @@ namespace NGA.Console
                 _context = _context.Replace(m.Value, "{replay}");
             }
             //引用回复处理
-            Regex quoterg = new Regex(@"\[quote\].*?\[/quote\]");
-            MatchCollection quotergmc = quoterg.Matches(_context);
+            MatchCollection quotergmc = QuoteRegex.Matches(_context);
             foreach (Match m in quotergmc)
             {
-                quotepid = new Regex(@"\[pid=(.*?),.*?\]").Match(m.Value).Groups[1]?.Value;
+                quotepid = PidRegex.Match(m.Value).Groups[1]?.Value;
 
                 //var rgroup = new Regex(@"\[uid=(.*?)\](.*?)\[/uid\].*?\((.*?)\):\[/b\](.*?)\[").Match(m.Value).Groups;
                 //string id = rgroup[1].Value;

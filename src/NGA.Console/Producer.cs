@@ -8,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NGA.Models;
-using NGA.Models.Constant;
 using NGA.Models.Entity;
 using NGA.Models.Models;
 using System;
@@ -28,7 +27,7 @@ namespace NGA.Console
     {
         private NGBToken? _token;
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly ILogger<Producer> _logger; 
+        private readonly ILogger<Producer> _logger;
         private readonly IRedisService _redisService;
         private readonly string QUEUE_NAME = "ex_topic";
         private List<Black> _blackList = [];
@@ -37,7 +36,7 @@ namespace NGA.Console
 
         public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequest request, IRedisService redisService)
         {
-            _logger = logger; 
+            _logger = logger;
             _scopeFactory = scopeFactory;
             _redisService = redisService;
         }
@@ -54,7 +53,7 @@ namespace NGA.Console
                 _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
             }
             _token = await _redisService.GetAsync<NGBToken>("Token");
-            
+
             int startPage = 1;
             do
             {
