@@ -33,12 +33,14 @@ namespace NGA.Console
         private List<Black> _blackList = [];
         private static readonly Meter _meter = new Meter(Program.ServiceName);
         private static readonly Counter<long> _queuedItemsCounter = _meter.CreateCounter<long>("nga_producer_queued_items_total", "items", "Total number of items queued by producer");
+        private static readonly ActivitySource _activitySource = new ActivitySource(Program.ServiceName);
 
         public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequest request, IRedisService redisService)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _redisService = redisService;
+            _logger.LogInformation("启动 Producer, ServiceName: {ServiceName}", Program.ServiceName);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -57,7 +59,7 @@ namespace NGA.Console
             int startPage = 1;
             do
             {
-                using var activity = new ActivitySource(Program.ServiceName).StartActivity("producer.run", ActivityKind.Internal);
+                using var activity = _activitySource.StartActivity("producer.run", ActivityKind.Internal);
                 using var scope = _scopeFactory.CreateScope();
                 var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
                 var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
@@ -68,7 +70,7 @@ namespace NGA.Console
                 _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
                 foreach (var fid in fids)
                 {
-                    using var childActivity = new ActivitySource(Program.ServiceName).StartActivity("process", ActivityKind.Internal);
+                    using var childActivity = _activitySource.StartActivity("producer.process-fid", ActivityKind.Internal);
                     childActivity?.SetTag("process.page", startPage);
                     childActivity?.SetTag("process.fid", fid);
                     try

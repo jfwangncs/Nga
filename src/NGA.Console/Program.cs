@@ -16,7 +16,6 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 
 namespace NGA.Console
@@ -24,7 +23,6 @@ namespace NGA.Console
     class Program
     {
         public static readonly string ServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "NGA.Console.Consumer";
-        private static readonly ActivitySource ActivitySource = new ActivitySource(ServiceName);
         static void Main(string[] args)
         {
             var logger = LogManager.Setup().GetCurrentClassLogger();

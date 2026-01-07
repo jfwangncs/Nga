@@ -35,6 +35,7 @@ namespace NGA.Console
         private static readonly Meter _meter = new Meter(Program.ServiceName);
         private static readonly Counter<long> _consumedItemsCounter = _meter.CreateCounter<long>("nga_consumer_consumed_items_total", "items", "Total number of items consumed by consumer");
         private readonly IRedisService _redisService;
+        private static readonly ActivitySource _activitySource = new ActivitySource(Program.ServiceName);
 
         // 预编译正则表达式以提升性能和减少内存
         private static readonly Regex ReplyRegex = new Regex(@"\[b\]Reply to.*?\[/b\]", RegexOptions.Compiled);
@@ -50,6 +51,7 @@ namespace NGA.Console
             _consoleOptions = consoleOptions.Value;
             _scopeFactory = scopeFactory;
             _redisService = redisService;
+            _logger.LogInformation("启动 Consumer, ServiceName: {ServiceName}, ConsumerCount: {Count}", Program.ServiceName, _consoleOptions.ConsumerCount);
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -76,7 +78,7 @@ namespace NGA.Console
         /// </summary>     
         protected async Task<bool> HandleTopicAsync(string? tid, int taskId)
         {
-            using var activity = new ActivitySource(Program.ServiceName).StartActivity("consumer.run", ActivityKind.Internal);
+            using var activity = _activitySource.StartActivity("consumer.run", ActivityKind.Internal);
             if (string.IsNullOrEmpty(tid))
                 return true;
             using var scope = _scopeFactory.CreateScope();
@@ -93,7 +95,7 @@ namespace NGA.Console
                 return true;
             if (!await _redisService.LockTakeAsync(topic.Tid, TimeSpan.FromHours(1)))
                 return true;
-            using var childActivity = new ActivitySource(Program.ServiceName).StartActivity("process", ActivityKind.Internal);
+            using var childActivity = _activitySource.StartActivity("consumer.process-topic", ActivityKind.Internal);
             childActivity?.SetTag("topic.tid", tid);
             childActivity?.SetTag("topic.title", topic.Title);
             childActivity?.SetTag("topic.startNum", topic.ReptileNum);
@@ -166,7 +168,7 @@ namespace NGA.Console
                 {
                     _logger.LogInformation($"{taskId}-{topic.Title}被隐藏");
                     return new Tuple<int, bool>(-1, true);
-                }              
+                }
 
                 if (_ngaClient.StatusCode != HttpStatusCode.OK)
                 {
