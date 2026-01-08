@@ -26,4 +26,18 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+USER root
+
+RUN mkdir -p /app/dumps /app/tools && chmod 777 /app/dumps
+
+RUN apt-get update && apt-get install -y curl && \
+    curl -L https://aka.ms/dotnet-dump/linux-x64 -o /app/tools/dotnet-dump && \
+    curl -L https://aka.ms/dotnet-trace/linux-x64 -o /app/tools/dotnet-trace && \
+    curl -L https://aka.ms/dotnet-gcdump/linux-x64 -o /app/tools/dotnet-gcdump && \
+    chmod +x /app/tools/dotnet-dump /app/tools/dotnet-trace /app/tools/dotnet-gcdump && \
+    apt-get remove -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="${PATH}:/app/tools"
+
+USER app
 ENTRYPOINT ["dotnet", "NGA.Console.dll"]
