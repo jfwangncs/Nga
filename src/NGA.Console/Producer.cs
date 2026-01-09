@@ -34,7 +34,8 @@ namespace NGA.Console
         private static readonly Meter _meter = new Meter(Program.ServiceName);
         private static readonly Counter<long> _queuedItemsCounter = _meter.CreateCounter<long>("nga_producer_queued_items_total", "items", "Total number of items queued by producer");
         private static readonly ActivitySource _activitySource = new ActivitySource(Program.ServiceName);
-
+        private static readonly Regex _uidRegex = new Regex("uid=([^']+)", RegexOptions.Compiled);
+        private List<string> _blackKeywords = new();
         public Producer(IServiceScopeFactory scopeFactory, ILogger<Producer> logger, IJfYuRequest request, IRedisService redisService)
         {
             _logger = logger;
@@ -53,6 +54,7 @@ namespace NGA.Console
             {
                 var _blackService = initScope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
                 _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
+                _blackKeywords = _blackList.SelectMany(b => b.Title.Split(',', StringSplitOptions.RemoveEmptyEntries)).ToList();
             }
             _token = await _redisService.GetAsync<NGBToken>("Token");
 
@@ -60,16 +62,16 @@ namespace NGA.Console
             do
             {
                 using var activity = _activitySource.StartActivity("producer.run", ActivityKind.Internal);
-                using var scope = _scopeFactory.CreateScope();
-                var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
-                var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-                var _ngaClient = scope.ServiceProvider.GetRequiredService<IJfYuRequest>();
-                int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
-                var queueTids = new List<string>();
-                _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
-                _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
                 foreach (var fid in fids)
                 {
+                    using var scope = _scopeFactory.CreateScope();
+                    var _topicService = scope.ServiceProvider.GetRequiredService<IService<Topic, DataContext>>();
+                    var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
+                    var _ngaClient = scope.ServiceProvider.GetRequiredService<IJfYuRequest>();
+                    int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
+                    var queueTids = new List<string>();
+                    _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportCid", Value = _token?.Token, Domain = ".nga.cn", Path = "/" });
+                    _ngaClient.RequestCookies.Add(new Cookie() { Name = "ngaPassportUid", Value = _token?.Uid, Domain = ".nga.cn", Path = "/" });
                     using var childActivity = _activitySource.StartActivity("producer.process-fid", ActivityKind.Internal);
                     childActivity?.SetTag("process.page", startPage);
                     childActivity?.SetTag("process.fid", fid);
@@ -95,10 +97,7 @@ namespace NGA.Console
 
                         var htmlDocument = new HtmlDocument();
                         htmlDocument.LoadHtml(html);
-                        var nodes = htmlDocument.DocumentNode.SelectNodes("//*[@class='row1 topicrow']");
-                        if (nodes == null || nodes.Count <= 0)
-                            continue;
-                        var allnodes = nodes.Union(htmlDocument.DocumentNode.SelectNodes("//*[@class='row2 topicrow']"));
+                        var allnodes = htmlDocument.DocumentNode.SelectNodes("//*[@class='row1 topicrow' or @class='row2 topicrow']");
                         if (allnodes == null || !allnodes.Any())
                             continue;
                         string _thread = htmlDocument.DocumentNode.SelectSingleNode("//*[@class='nav_link']").InnerText;
@@ -107,7 +106,7 @@ namespace NGA.Console
                             var t = new Topic
                             {
                                 Replies = item.ChildNodes[1].InnerText.Trim(),
-                                Uid = Regex.Match(item.ChildNodes[5].InnerHtml, "uid=.+?'").ToString().Replace("'", "").Split('=')[1],
+                                Uid = _uidRegex.Match(item.ChildNodes[5].InnerHtml).Groups[1].Value,
                                 LastReplyer = item.ChildNodes[7].ChildNodes[2].InnerText.Trim(),
                                 PostDate = item.ChildNodes[5].ChildNodes[2].InnerText.Trim(),
                                 Url = item.ChildNodes[3].ChildNodes[1].Attributes["href"].Value.Trim(),
@@ -150,10 +149,12 @@ namespace NGA.Console
                         continue;
                     }
                     childActivity?.SetTag("process.queueCount", queueTids.Count);
-                    await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
-                    _queuedItemsCounter.Add(queueTids.Count, new KeyValuePair<string, object?>("fid", fid));
-                    _logger.LogInformation("共发送{count}条到队列", queueTids.Count);
-                    queueTids = [];
+                    if (queueTids.Count > 0)
+                    {
+                        await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
+                        _queuedItemsCounter.Add(queueTids.Count, new KeyValuePair<string, object?>("fid", fid));
+                        _logger.LogInformation("共发送{count}条到队列", queueTids.Count);
+                    } 
                 }
                 await RandomDelayExtension.GetRandomDelayAsync();
                 startPage = startPage > 3 ? 1 : ++startPage;
@@ -162,14 +163,10 @@ namespace NGA.Console
 
         protected bool CheckBlackList(Topic t)
         {
-            foreach (var item in _blackList)
+            foreach (var keyword in _blackKeywords)
             {
-                string[] titles = item.Title.Split(',');
-                foreach (var title in titles)
-                {
-                    if (t.Title.Contains(title))
-                        return false;
-                }
+                if (t.Title.Contains(keyword, StringComparison.Ordinal))
+                    return false;
             }
             return true;
         }
