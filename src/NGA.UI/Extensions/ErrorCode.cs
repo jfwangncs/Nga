@@ -1,7 +1,4 @@
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Runtime.Serialization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace NGA.UI.Extensions
 {
@@ -14,9 +11,15 @@ namespace NGA.UI.Extensions
         //client error
         [Description("Validation error.")]
         ValidationError = 4000,
+        [Description("Token is Unauthorized.")]
+        UnauthorizedError,
+        [Description("Resources is forbidden.")]
+        ForbiddenError,
+        [Description("Invalid Credentials.")]
+        InvalidCredentials,
 
         //internal service error
-        [Description("The product is out of stock")] 
+        [Description("The product is out of stock")]
         OutOfSotck = 5000
     }
 }

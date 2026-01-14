@@ -1,10 +1,16 @@
 using Asp.Versioning;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.IdentityModel.Tokens;
 using NGA.UI.Model;
 using NGA.UI.Options;
+using NGA.UI.Services;
+using NGA.UI.Services.Interfaces;
 using System;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -59,8 +65,6 @@ namespace NGA.UI.Extensions
             return services;
         }
 
-
-
         public static IServiceCollection AddCustomFluentValidation(this IServiceCollection services)
         {
             services.AddValidatorsFromAssemblyContaining<Program>();
@@ -70,12 +74,79 @@ namespace NGA.UI.Extensions
 
         public static IServiceCollection AddCustomOptions(this IServiceCollection services, IConfiguration configuration)
         {
-            services.Configure<Jwt>(configuration.GetSection("Jwt"));
+            services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             return services;
         }
 
-        public static IServiceCollection AddCustomInjection(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddCustomAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
+            var JwtConfig = configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? throw new NullReferenceException(nameof(JwtSettings));
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters()
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidAudience = JwtConfig.Audience,
+                    ValidIssuer = JwtConfig.Issuer,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtConfig.SecretKey))
+                };
+                options.Events = new JwtBearerEvents()
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        var AllowAnonymousAttribute = context.HttpContext.GetEndpoint()?.Metadata.OfType<AllowAnonymousAttribute>().FirstOrDefault();
+                        if (AllowAnonymousAttribute == null)
+                        {
+                            context.Response.OnStarting(async () =>
+                            {
+                                context.NoResult();
+                                context.Response.Headers.TryAdd("Token-Expired", "true");
+                                context.Response.ContentType = "application/json";
+                                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                                await context.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse<string>()
+                                {
+                                    Code = ResponseCode.Failed,
+                                    ErrorCode = ErrorCode.UnauthorizedError,
+                                    Message = ErrorCode.UnauthorizedError.GetDescription()
+                                }));
+                            });
+                        }
+                        return Task.CompletedTask;
+                    },
+                    OnForbidden = context =>
+                    {
+                        var AllowAnonymousAttribute = context.HttpContext.GetEndpoint()?.Metadata.OfType<AllowAnonymousAttribute>().FirstOrDefault();
+                        if (AllowAnonymousAttribute == null)
+                        {
+                            context.Response.OnStarting(async () =>
+                            {
+                                context.NoResult();
+                                context.Response.Headers.TryAdd("Token-Expired", "true");
+                                context.Response.ContentType = "application/json";
+                                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                                await context.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse<string>()
+                                {
+                                    Code = ResponseCode.Failed,
+                                    ErrorCode = ErrorCode.ForbiddenError,
+                                    Message = ErrorCode.ForbiddenError.GetDescription()
+                                }));
+                            });
+                        }
+                        return Task.CompletedTask;
+                    },
+                };
+            });
+
+            return services;
+        }
+
+
+        public static IServiceCollection AddCustomInjection(this IServiceCollection services, IConfiguration configuration)
+        { 
+            services.AddScoped<IJwtService, JwtService>();
             return services;
         }
 
@@ -104,12 +175,6 @@ namespace NGA.UI.Extensions
                     }
                 });
             });
-        }
-
-        public static IServiceCollection AddCustomNlog(this IServiceCollection services)
-        {
-
-            return services;
         }
     }
 }

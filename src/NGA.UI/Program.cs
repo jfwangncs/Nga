@@ -23,7 +23,9 @@ try
     builder.Services.AddCustomCoreAPI()
         .AddCustomApiVersioning()
         .AddCustomFluentValidation()
-        .AddCustomOptions(builder.Configuration);
+        .AddCustomOptions(builder.Configuration)
+        .AddCustomAuthentication(builder.Configuration) 
+        .AddCustomInjection(builder.Configuration);
 
     var app = builder.Build();
 
