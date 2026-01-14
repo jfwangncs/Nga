@@ -7,7 +7,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NGA.Console", "NGA.Console\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NGA.Models", "NGA.Models\NGA.Models.csproj", "{1B1A4A3F-AAAB-44ED-9EE6-F92569468160}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NGA.UI", "NGA.UI\NGA.UI.csproj", "{3319EBD0-8697-4AA7-B83F-2DB7DCEE3F51}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub Action", "GitHub Action", "{E335F244-422F-4D60-8CA2-060E477612A3}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\docker-compose.yml = ..\.github\workflows\docker-compose.yml
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NGA.UI", "NGA.UI\NGA.UI.csproj", "{8A6E83E4-8B7A-4ACF-9E7D-DE80E62D4A6B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +28,10 @@ Global
 		{1B1A4A3F-AAAB-44ED-9EE6-F92569468160}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B1A4A3F-AAAB-44ED-9EE6-F92569468160}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1B1A4A3F-AAAB-44ED-9EE6-F92569468160}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3319EBD0-8697-4AA7-B83F-2DB7DCEE3F51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3319EBD0-8697-4AA7-B83F-2DB7DCEE3F51}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3319EBD0-8697-4AA7-B83F-2DB7DCEE3F51}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3319EBD0-8697-4AA7-B83F-2DB7DCEE3F51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A6E83E4-8B7A-4ACF-9E7D-DE80E62D4A6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A6E83E4-8B7A-4ACF-9E7D-DE80E62D4A6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A6E83E4-8B7A-4ACF-9E7D-DE80E62D4A6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A6E83E4-8B7A-4ACF-9E7D-DE80E62D4A6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

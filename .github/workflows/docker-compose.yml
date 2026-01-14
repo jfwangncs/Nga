@@ -1,9 +1,12 @@
-name: Deploy
+name: ConsoleCI
 on:
   workflow_dispatch:
   push:
     branches:
       - "master"
+    paths:
+      - "src/NGA.Console/**"
+      - "src/NGA.Models/**"
 jobs:
   docker:
     runs-on: ubuntu-latest
