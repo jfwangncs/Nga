@@ -21,13 +21,7 @@ namespace NGA.UI.Controllers
         {
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
             var version = System.IO.File.ReadAllText($"{Environment.CurrentDirectory}/version.txt");
-            var result = "V1\r\n";
-
-            result += $"\r\nDatetime:{DateTime.Now}";
-
-            result += $"\r\nEnv:{env} ";
-
-            result += $"\r\nVersion:{version}";
+            var result = "V1:Ok";
 
             _logger.LogInformation("Version:{Version},Date:{Date},Env:{Env}", version, DateTime.Now, env);
 

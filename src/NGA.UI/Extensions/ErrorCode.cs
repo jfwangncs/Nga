@@ -11,11 +11,11 @@ namespace NGA.UI.Extensions
         //client error
         [Description("Validation error.")]
         ValidationError = 4000,
-        [Description("Token is Unauthorized.")]
+        [Description("The token is unauthorized.")]
         UnauthorizedError,
-        [Description("Resources is forbidden.")]
+        [Description("The resource is forbidden.")]
         ForbiddenError,
-        [Description("Invalid Credentials.")]
+        [Description("Invalid credentials.")]
         InvalidCredentials,
 
         //internal service error

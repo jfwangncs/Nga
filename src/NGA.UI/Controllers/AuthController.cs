@@ -1,5 +1,4 @@
 
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NGA.UI.Extensions;
@@ -47,9 +46,22 @@ namespace NGA.UI.Controllers
             });
         }
 
-        [HttpPost("validate")]
-        [Authorize]
-        public IActionResult ValidateToken()
+        [HttpGet("validate")] 
+        public IActionResult Validate()
+        {
+            var username = User.Identity?.Name;
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            return Ok(new
+            {
+                Username = username,
+                Role = role,
+                IsAuthenticated = User.Identity?.IsAuthenticated ?? false
+            });
+        }
+        [HttpGet("validaterole")]
+        [Authorize(Roles = "SuperAdmin")]
+        public IActionResult validateRole()
         {
             var username = User.Identity?.Name;
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
