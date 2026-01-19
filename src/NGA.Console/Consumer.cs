@@ -27,6 +27,7 @@ namespace NGA.Console
 {
     class Consumer : BackgroundService
     {
+
         private NGBToken? _token;
         string ConsumerType = Environment.GetEnvironmentVariable("ConsumerType") ?? "New";//All 爬取所有 New爬取新回复   
         private ILogger<Consumer> _logger;
@@ -36,6 +37,9 @@ namespace NGA.Console
         private static readonly Counter<long> _consumedItemsCounter = _meter.CreateCounter<long>("nga_consumer_consumed_items_total", "items", "Total number of items consumed by consumer");
         private readonly IRedisService _redisService;
         private static readonly ActivitySource _activitySource = new ActivitySource(Program.ServiceName);
+        private CancellationTokenSource _consumerCts;
+        private bool _isRunning = false;
+        private List<Task> _consumerTasks;
 
         // 预编译正则表达式以提升性能和减少内存
         private static readonly Regex ReplyRegex = new Regex(@"\[b\]Reply to.*?\[/b\]", RegexOptions.Compiled);
@@ -51,26 +55,139 @@ namespace NGA.Console
             _consoleOptions = consoleOptions.Value;
             _scopeFactory = scopeFactory;
             _redisService = redisService;
-            _logger.LogInformation("启动 Consumer, ServiceName: {ServiceName}, ConsumerCount: {Count}", Program.ServiceName, _consoleOptions.ConsumerCount);
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _token ??= await _redisService.GetAsync<NGBToken>("Token");
 
-            int consumerCount = _consoleOptions.ConsumerCount;
-            var tasks = new List<Task>();
-            for (int i = 0; i < consumerCount; i++)
-            {
-                var taskId = i + 1;
-                tasks.Add(Task.Run(async () =>
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var _rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-                    var channel = await _rabbitMQService.ReceiveAsync<string>("topic", async q => await HandleTopicAsync(q, taskId));
-                }, stoppingToken));
-            }
-            await Task.WhenAll(tasks);
+            // 启动定时检查任务
+            var schedulerTask = Task.Run(() => RunScheduler(stoppingToken), stoppingToken);
+
+            await StartConsumers(stoppingToken);
+
             await Task.Delay(Timeout.Infinite, stoppingToken);
+        }
+
+
+        private async Task StartConsumers(CancellationToken stoppingToken)
+        {
+            if (_isRunning)
+            {
+                _logger.LogWarning("已在运行中，跳过启动");
+                return;
+            }
+
+            _logger.LogInformation("启动 Consumer, ServiceName: {ServiceName}, ConsumerCount: {Count}", Program.ServiceName, _consoleOptions.ConsumerCount);
+
+            try
+            {
+                _consumerCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+
+                int consumerCount = _consoleOptions.ConsumerCount;
+                _consumerTasks = new List<Task>();
+
+                for (int i = 0; i < consumerCount; i++)
+                {
+                    var taskId = i + 1;
+                    var task = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            using var scope = _scopeFactory.CreateScope();
+                            var rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
+
+                            _logger.LogInformation("{TaskId}开始接收消息", taskId);
+
+                            await rabbitMQService.ReceiveAsync<string>(
+                                "topic",
+                                async q => await HandleTopicAsync(q, taskId), 1, _consumerCts.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogInformation("{TaskId}已被取消", taskId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "{TaskId}发生异常", taskId);
+                        }
+                    }, _consumerCts.Token);
+
+                    _consumerTasks.Add(task);
+                }
+
+                _isRunning = true;
+                _logger.LogInformation("已启动{Count}个Task", consumerCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "启动失败");
+            }
+        }
+
+        private async Task StopConsumers()
+        {
+            if (!_isRunning)
+            {
+                _logger.LogWarning("未在运行，跳过停止");
+                return;
+            }
+
+
+            _logger.LogInformation("开始停止 Consumer ");
+
+            try
+            {
+                _consumerCts?.Cancel();
+
+                if (_consumerTasks != null && _consumerTasks.Count > 0)
+                {
+                    var waitTask = Task.WhenAll(_consumerTasks);
+                    var completedInTime = await Task.WhenAny(waitTask, Task.Delay(TimeSpan.FromSeconds(30))) == waitTask;
+
+                    if (completedInTime)
+                    {
+                        _logger.LogInformation("消费者已停止");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("部分消费者未在30秒内停止，强制结束");
+                    }
+                }
+
+                _isRunning = false;
+                _logger.LogInformation("已全部停止");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "停止时发生异常");
+            }
+            finally
+            {
+                _consumerCts?.Dispose();
+                _consumerTasks?.Clear();
+            }
+        }
+
+        private async Task RunScheduler(CancellationToken stoppingToken)
+        {
+            // 每分钟检查一次
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                var now = DateTime.Now;
+
+                if (now.Hour == 5 && now.Minute >= 55 && now.Minute < 59 && _isRunning)
+                {
+                    _logger.LogInformation("到达维护时间 {Time}，停止消费者", now.ToString("HH:mm"));
+                    await StopConsumers();
+                }
+                else if (now.Hour == 6 && now.Minute >= 30 && now.Minute < 35 && !_isRunning)
+                {
+                    _logger.LogInformation("维护结束 {Time}，启动消费者", now.ToString("HH:mm"));
+                    await StartConsumers(stoppingToken);
+                }
+            }
         }
 
         /// <summary>
@@ -119,7 +236,6 @@ namespace NGA.Console
                         break;
 
                     page++;
-                    await RandomDelayExtension.GetRandomDelayAsync();
                     cts.Token.ThrowIfCancellationRequested();
                 } while (true);
                 _consumedItemsCounter.Add(1, new KeyValuePair<string, object?>("fid", topic.Fid), new KeyValuePair<string, object?>("status", "success"));
@@ -146,6 +262,7 @@ namespace NGA.Console
                 childActivity?.SetTag("topic.endNum", topic.ReptileNum);
                 _logger.LogInformation("{TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
                 await _redisService.LockReleaseAsync(topic.Tid);
+                await RandomDelayExtension.GetRandomDelayAsync();
             }
 
             async Task<Tuple<int, bool>> MainAsync(Topic topic, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)

@@ -9,9 +9,9 @@ namespace NGA.Console
         {
             // 如果在5:52-5:59之间，暂停30分钟
             var now = DateTime.Now;
-            if (now.Hour == 5 && now.Minute >= 52 && now.Minute <= 59)
+            if (now.Hour == 5 && now.Minute >= 50 && now.Minute <= 55)
             {
-                await Task.Delay(30 * 60 * 1000); // 30分钟
+                await Task.Delay(40 * 60 * 1000); // 30分钟
                 return;
             }
 
