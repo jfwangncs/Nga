@@ -129,7 +129,7 @@ namespace NGA.UI.Extensions
             return services;
         }
 
-        public static IServiceCollection AddCustomNLog(this IServiceCollection services)
+        public static IServiceCollection AddCustomHttpLog(this IServiceCollection services)
         {
             
             services.AddHttpLogging(logging =>

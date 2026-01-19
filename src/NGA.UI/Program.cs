@@ -28,7 +28,7 @@ try
         .AddCustomApiVersioning()
         .AddCustomFluentValidation()
         .AddCustomOpenTelemetry()
-        .AddCustomNLog()
+        .AddCustomHttpLog()
         .AddCustomOptions(builder.Configuration)
         .AddCustomAuthentication(builder.Configuration)
         .AddCustomInjection(builder.Configuration);
