@@ -237,8 +237,8 @@ namespace NGA.Console
 
                     page++;
                     cts.Token.ThrowIfCancellationRequested();
+                    await RandomDelayExtension.GetRandomDelayAsync();
                 } while (true);
-                await RandomDelayExtension.GetRandomDelayAsync();
                 _consumedItemsCounter.Add(1, new KeyValuePair<string, object?>("fid", topic.Fid), new KeyValuePair<string, object?>("status", "success"));
                 return true;
             }
