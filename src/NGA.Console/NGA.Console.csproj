@@ -10,7 +10,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="JfYu.Request" Version="8.3.2" />
-		<PackageReference Include="JfYu.RabbitMQ" Version="8.1.0" />
+		<PackageReference Include="JfYu.RabbitMQ" Version="8.1.1" />
 		<PackageReference Include="JfYu.Redis" Version="8.1.5" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" /> 
 		<PackageReference Include="HtmlAgilityPack" Version="1.12.4" />

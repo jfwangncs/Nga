@@ -100,7 +100,7 @@ namespace NGA.Console
 
                             await rabbitMQService.ReceiveAsync<string>(
                                 "topic",
-                                async q => await HandleTopicAsync(q, taskId), 1, _consumerCts.Token);
+                                async q => await HandleTopicAsync(q, taskId), prefetchCount: 10, autoAck: true, cancellationToken: _consumerCts.Token);
                         }
                         catch (OperationCanceledException)
                         {
@@ -238,6 +238,7 @@ namespace NGA.Console
                     page++;
                     cts.Token.ThrowIfCancellationRequested();
                 } while (true);
+                await RandomDelayExtension.GetRandomDelayAsync();
                 _consumedItemsCounter.Add(1, new KeyValuePair<string, object?>("fid", topic.Fid), new KeyValuePair<string, object?>("status", "success"));
                 return true;
             }
@@ -262,7 +263,6 @@ namespace NGA.Console
                 childActivity?.SetTag("topic.endNum", topic.ReptileNum);
                 _logger.LogInformation("{TaskId}-{Tid}-{Title},{OriginalNum}-{ReptileNum}结束", taskId, topic.Tid, topic.Title, originalNum, topic.ReptileNum);
                 await _redisService.LockReleaseAsync(topic.Tid);
-                await RandomDelayExtension.GetRandomDelayAsync();
             }
 
             async Task<Tuple<int, bool>> MainAsync(Topic topic, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
