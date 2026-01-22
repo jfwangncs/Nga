@@ -2,30 +2,26 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace NGA.UI.Controllers.V2
+namespace NGA.Api.Controllers
 {
     [ApiController]
-    //[Route("api/[controller]")]
+    [Route("api/[controller]")]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [ApiVersion("2.0")]
+    [ApiVersion("1.0")]
     public class HealthController : ControllerBase
     {
         private readonly ILogger<HealthController> _logger;
 
-        public HealthController(ILogger<HealthController> logger)
-        {
-            _logger = logger;
-        }
+        public HealthController(ILogger<HealthController> logger) => _logger = logger;
 
         [HttpGet]
         [AllowAnonymous]
         public IActionResult Get()
         {
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-            var version = System.IO.File.ReadAllText($"{Environment.CurrentDirectory}/version.txt");
-            var result = "V2:OK";
+            var result = "V1:Ok";
 
-            _logger.LogInformation("Version:{Version},Date:{Date},Env:{Env}", version, DateTime.Now, env);
+            _logger.LogInformation("Date:{Date},Env:{Env}", DateTime.Now, env);
 
             return Ok(result);
         }

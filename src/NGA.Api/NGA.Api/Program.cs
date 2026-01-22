@@ -1,4 +1,4 @@
-using NGA.UI.Extensions;
+using NGA.Api.Extensions;
 using NLog;
 using NLog.Extensions.Logging;
 using NLog.Web;
@@ -28,9 +28,8 @@ try
         .AddCustomApiVersioning()
         .AddCustomFluentValidation()
         .AddCustomOpenTelemetry()
-        .AddCustomHttpLog()
-        .AddCustomOptions(builder.Configuration)
-        .AddCustomAuthentication(builder.Configuration)
+        .AddCustomNLog()
+        .AddCustomOptions(builder.Configuration) 
         .AddCustomInjection(builder.Configuration);
 
     var app = builder.Build();
@@ -39,9 +38,7 @@ try
     {
         app.MapOpenApi();
         app.MapScalarApiReference();
-    }
-
-    app.UseAuthentication();
+    }     
 
     app.UseAuthorization();
 

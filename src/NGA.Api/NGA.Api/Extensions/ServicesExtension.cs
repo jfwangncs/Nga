@@ -1,33 +1,29 @@
 using Asp.Versioning;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using JfYu.Request.Extension;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
+using JfYu.Data.Extension;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.Logging;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Http.Diagnostics;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using NGA.UI.Model;
-using NGA.UI.Options;
-using NGA.UI.Services;
-using NGA.UI.Services.Interfaces;
+using NGA.Api.Model;
+using NGA.Api.Services;
+using NGA.Models;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NGA.UI.Extensions
+namespace NGA.Api.Extensions
 {
     public static class ServicesExtension
     {
-        public static readonly string ServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "NGA.UI";
+        public static readonly string ServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "NGA.Api";
+
         public static IServiceCollection AddCustomCoreAPI(this IServiceCollection services)
         {
             services.AddControllers().ConfigureApiBehaviorOptions(options =>
@@ -55,6 +51,7 @@ namespace NGA.UI.Extensions
             services.AddHttpContextAccessor();
             return services;
         }
+
         public static IServiceCollection AddCustomApiVersioning(this IServiceCollection services)
         {
             // API Versioning
@@ -74,6 +71,7 @@ namespace NGA.UI.Extensions
             });
             return services;
         }
+
         public static IServiceCollection AddCustomScalar(this IServiceCollection services)
         {
             services.AddEndpointsApiExplorer();
@@ -129,9 +127,9 @@ namespace NGA.UI.Extensions
             return services;
         }
 
-        public static IServiceCollection AddCustomHttpLog(this IServiceCollection services)
+        public static IServiceCollection AddCustomNLog(this IServiceCollection services)
         {
-            
+
             services.AddHttpLogging(logging =>
             {
                 logging.LoggingFields = HttpLoggingFields.All;
@@ -160,72 +158,6 @@ namespace NGA.UI.Extensions
 
         public static IServiceCollection AddCustomOptions(this IServiceCollection services, IConfiguration configuration)
         {
-            services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
-            return services;
-        }
-
-        public static IServiceCollection AddCustomAuthentication(this IServiceCollection services, IConfiguration configuration)
-        {
-            var JwtConfig = configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? throw new NullReferenceException(nameof(JwtSettings));
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters()
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidAudience = JwtConfig.Audience,
-                    ValidIssuer = JwtConfig.Issuer,
-                    RequireExpirationTime = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtConfig.SecretKey))
-                };
-                options.Events = new JwtBearerEvents()
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        var AllowAnonymousAttribute = context.HttpContext.GetEndpoint()?.Metadata.OfType<AllowAnonymousAttribute>().FirstOrDefault();
-                        if (AllowAnonymousAttribute == null)
-                        {
-                            context.Response.OnStarting(async () =>
-                            {
-                                context.NoResult();
-                                context.Response.Headers.TryAdd("Token-Expired", "true");
-                                context.Response.ContentType = "application/json";
-                                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                                await context.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse<string>()
-                                {
-                                    Code = ResponseCode.Failed,
-                                    ErrorCode = ErrorCode.UnauthorizedError,
-                                    Message = ErrorCode.UnauthorizedError.GetDescription()
-                                }));
-                            });
-                        }
-                        return Task.CompletedTask;
-                    },
-                    OnForbidden = context =>
-                    {
-                        var AllowAnonymousAttribute = context.HttpContext.GetEndpoint()?.Metadata.OfType<AllowAnonymousAttribute>().FirstOrDefault();
-                        if (AllowAnonymousAttribute == null)
-                        {
-                            context.Response.OnStarting(async () =>
-                            {
-                                context.NoResult();
-                                context.Response.Headers.TryAdd("Token-Expired", "true");
-                                context.Response.ContentType = "application/json";
-                                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                                await context.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse<string>()
-                                {
-                                    Code = ResponseCode.Failed,
-                                    ErrorCode = ErrorCode.ForbiddenError,
-                                    Message = ErrorCode.ForbiddenError.GetDescription()
-                                }));
-                            });
-                        }
-                        return Task.CompletedTask;
-                    },
-                };
-            });
 
             return services;
         }
@@ -233,7 +165,11 @@ namespace NGA.UI.Extensions
 
         public static IServiceCollection AddCustomInjection(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddScoped<IJwtService, JwtService>(); 
+            services.AddJfYuDbContext<DataContext>(options =>
+            {
+                configuration.GetSection("ConnectionStrings").Bind(options);
+            });
+            services.AddScoped<ITopicService, TopicService>();
             return services;
         }
 

@@ -1,13 +1,14 @@
 using System.ComponentModel;
 
-namespace NGA.UI.Extensions
+namespace NGA.Api.Extensions
 {
     public enum ErrorCode
     {
         //unexpected  error 
         [Description("System error.")]
         SystemError = 1000,
-
+        [Description("The topic was not found.")]
+        TopicNotFound = 1001,
         //client error
         [Description("Validation error.")]
         ValidationError = 4000,

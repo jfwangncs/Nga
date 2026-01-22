@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Reflection;
 
-namespace NGA.UI.Extensions
+namespace NGA.Api.Extensions
 {
     public static class EnumExtensions
     {

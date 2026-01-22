@@ -1,10 +1,15 @@
-namespace NGA.UI.Model
+using System.ComponentModel;
+
+namespace NGA.Api.Model
 {
     public enum ResponseCode
     {
         Success = 0,
-        Pending = 1,
+
+        Processing = 1,
+
         Failed = 2,
+
         Error = 9
     }
 }
