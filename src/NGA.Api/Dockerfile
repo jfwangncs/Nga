@@ -14,8 +14,8 @@ WORKDIR "/src/NGA.Api"
 RUN dotnet build "NGA.Api.csproj" -c Release -o /app/build
 
 # Publish stage
-WORKDIR "/src/NGA.Api"
 FROM build AS publish
+WORKDIR "/src/NGA.Api"
 RUN dotnet publish "NGA.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage

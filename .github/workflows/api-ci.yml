@@ -25,10 +25,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push NGA.Consumer image
+      - name: Build and push NGA.Api image
         uses: docker/build-push-action@v6
         with:
-          context: ./src/NGA.Api
+          context: ./src
           file: ./src/NGA.Api/Dockerfile
           push: true
           tags: jfwangncs/ngb-api:${{ github.run_number }}
