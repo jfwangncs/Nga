@@ -28,7 +28,7 @@ jobs:
       - name: Build and push NGA.Consumer image
         uses: docker/build-push-action@v6
         with:
-          context: ./src
-          file: ./src/NGA.Api/Dockerfile
+          context: ./src/NGA.Api
+          file: Dockerfile
           push: true
           tags: jfwangncs/ngb-api:${{ github.run_number }}
