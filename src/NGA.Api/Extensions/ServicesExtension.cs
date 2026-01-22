@@ -62,8 +62,7 @@ namespace NGA.Api.Extensions
                 options.ReportApiVersions = true;
                 options.ApiVersionReader = ApiVersionReader.Combine(
                      new QueryStringApiVersionReader("api-version"),
-                     new HeaderApiVersionReader("x-api-version"),
-                     new MediaTypeApiVersionReader("v"));
+                     new HeaderApiVersionReader("x-api-version"));
             }).AddApiExplorer(options =>
             {
                 options.GroupNameFormat = "'v'VVV";
