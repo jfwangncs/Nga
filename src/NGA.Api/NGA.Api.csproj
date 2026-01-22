@@ -40,8 +40,8 @@
 		<PackageReference Include="RabbitMQ.Client.OpenTelemetry" Version="1.0.0-rc.2" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\..\NGA.Models\NGA.Models.csproj" />
+	<ItemGroup> 
+	  <ProjectReference Include="..\NGA.Models\NGA.Models.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
