@@ -3,14 +3,18 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore dependencies
-COPY ["NGA.Api.csproj", "./"]
-RUN dotnet restore "NGA.Api.csproj"
+COPY ["NGA.Api/NGA.Api.csproj", "NGA.Api/"]
+COPY ["NGA.Models/NGA.Models.csproj", "NGA.Models/"]
+RUN dotnet restore "NGA.Api/NGA.Api.csproj"
 
 # Copy everything else and build
-COPY . .
+COPY ["NGA.Api/", "NGA.Api/"]
+COPY ["NGA.Models/", "NGA.Models/"]
+WORKDIR "/src/NGA.Api"
 RUN dotnet build "NGA.Api.csproj" -c Release -o /app/build
 
 # Publish stage
+WORKDIR "/src/NGA.Api"
 FROM build AS publish
 RUN dotnet publish "NGA.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
