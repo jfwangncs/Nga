@@ -32,7 +32,6 @@ namespace NGA.Api.Controllers
         }
 
         [HttpGet("{tid}")]
-
         public async Task<IActionResult> Topic(string tid, [FromQuery] QueryTopicRequest query)
         {
 

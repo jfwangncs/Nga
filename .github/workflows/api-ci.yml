@@ -29,6 +29,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./src/NGA.Api
-          file: Dockerfile
+          file: ./src/NGA.Api/Dockerfile
           push: true
           tags: jfwangncs/ngb-api:${{ github.run_number }}
