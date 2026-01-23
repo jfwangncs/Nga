@@ -1,8 +1,8 @@
 using JfYu.Data.Model;
 using JfYu.Data.Service;
+using NGA.Api.Model.Request;
 using NGA.Models;
-using NGA.Models.Entity;
-using WebApi.Model.Request;
+using NGA.Models.Entity; 
 
 namespace NGA.Api.Services
 {

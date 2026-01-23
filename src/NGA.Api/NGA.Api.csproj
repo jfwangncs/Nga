@@ -19,6 +19,7 @@
 		<PackageReference Include="FluentValidation" Version="12.1.1" />
 		<PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+		<PackageReference Include="JfYu.WeChat" Version="8.0.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.Middleware" Version="10.2.0" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
@@ -37,7 +38,7 @@
 		<PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.14.0-beta.1" />
 		<PackageReference Include="OpenTelemetry.Exporter.Prometheus.HttpListener" Version="1.14.0-beta.1" />
-		<PackageReference Include="RabbitMQ.Client.OpenTelemetry" Version="1.0.0-rc.2" />
+		<PackageReference Include="RabbitMQ.Client.OpenTelemetry" Version="1.0.0-rc.2" /> 
 	</ItemGroup>
 
 	<ItemGroup> 

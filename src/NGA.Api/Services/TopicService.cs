@@ -2,18 +2,14 @@ using JfYu.Data.Context;
 using JfYu.Data.Extension;
 using JfYu.Data.Model;
 using JfYu.Data.Service;
+using NGA.Api.Model.Request;
 using NGA.Models;
-using NGA.Models.Entity;
-using WebApi.Model.Request;
+using NGA.Models.Entity; 
 
 namespace NGA.Api.Services
 {
-    public class TopicService : Service<Topic, DataContext>, ITopicService
+    public class TopicService(DataContext context, ReadonlyDBContext<DataContext> readonlyDBContext) : Service<Topic, DataContext>(context, readonlyDBContext), ITopicService
     {
-        public TopicService(DataContext context, ReadonlyDBContext<DataContext> readonlyDBContext) : base(context, readonlyDBContext)
-        {
-        }
-
         public async Task<PagedData<Topic>> GetListAsync(QueryRequest query)
         {
             var latestReplays = ReadonlyContext.Replays

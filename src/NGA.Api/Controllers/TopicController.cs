@@ -1,16 +1,18 @@
 using JfYu.Data.Extension;
 using JfYu.Data.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NGA.Api.Extensions;
+using NGA.Api.Model.Request;
 using NGA.Api.Services;
 using NGA.Models;
-using NGA.Models.Entity;
-using WebApi.Model.Request;
+using NGA.Models.Entity; 
 
 namespace NGA.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TopicController : CustomController
     {
         public readonly ITopicService _topicService;
@@ -55,9 +57,8 @@ namespace NGA.Api.Controllers
                 {
                     var Quote = quoteReplays.Where(q => q.Pid == item.QuotePid).FirstOrDefault();
                     if (Quote != null)
-                    {
-                        User u;
-                        quoteReplayUsers.TryGetValue(Quote.Uid, out u);
+                    { 
+                        quoteReplayUsers.TryGetValue(Quote.Uid, out User? u);
                         if (Quote != null)
                         {
                             quoteHtml = $"<div class=\"quote\"> by <a href= \"/nuke.php?func=ucp&amp;uid={Quote.Uid}\" " +
@@ -68,7 +69,7 @@ namespace NGA.Api.Controllers
                 }
                 item.Content = item.Content.Replace("{replay}", quoteHtml);
             }
-            Dictionary<string, User> users = new Dictionary<string, User>();
+            Dictionary<string, User> users = [];
             users = (await _userService.GetListAsync(q => replays.Data.Select(q => q.Uid).Contains(q.Uid))).Distinct().ToDictionary(q => q.Uid, q => q);
             dynamic result = new
             {

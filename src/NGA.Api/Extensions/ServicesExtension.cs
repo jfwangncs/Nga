@@ -2,6 +2,7 @@ using Asp.Versioning;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using JfYu.Data.Extension;
+using JfYu.WeChat;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.Logging;
 using Microsoft.AspNetCore.HttpLogging;
@@ -10,7 +11,9 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Http.Diagnostics;
 using Microsoft.OpenApi;
 using NGA.Api.Model;
+using NGA.Api.Options;
 using NGA.Api.Services;
+using NGA.Api.Services.Interfaces;
 using NGA.Models;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -23,7 +26,27 @@ namespace NGA.Api.Extensions
     public static class ServicesExtension
     {
         public static readonly string ServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "NGA.Api";
+        public static IServiceCollection AddCustomOptions(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+            return services;
+        }
 
+
+        public static IServiceCollection AddCustomInjection(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddScoped<IJwtService, JwtService>();
+            services.AddJfYuDbContext<DataContext>(options =>
+            {
+                configuration.GetSection("ConnectionStrings").Bind(options);
+            });
+            services.AddScoped<ITopicService, TopicService>();
+            services.AddMiniProgram(options =>
+            {
+                configuration.GetSection("MiniProgram").Bind(options);
+            });
+            return services;
+        }
         public static IServiceCollection AddCustomCoreAPI(this IServiceCollection services)
         {
             services.AddControllers().ConfigureApiBehaviorOptions(options =>
@@ -153,24 +176,7 @@ namespace NGA.Api.Extensions
             services.AddValidatorsFromAssemblyContaining<Program>();
             services.AddFluentValidationAutoValidation(options => options.DisableDataAnnotationsValidation = true);
             return services;
-        }
-
-        public static IServiceCollection AddCustomOptions(this IServiceCollection services, IConfiguration configuration)
-        {
-
-            return services;
-        }
-
-
-        public static IServiceCollection AddCustomInjection(this IServiceCollection services, IConfiguration configuration)
-        {
-            services.AddJfYuDbContext<DataContext>(options =>
-            {
-                configuration.GetSection("ConnectionStrings").Bind(options);
-            });
-            services.AddScoped<ITopicService, TopicService>();
-            return services;
-        }
+        }       
 
         public static void UseCustomExceptionHandler(this WebApplication app)
         {
