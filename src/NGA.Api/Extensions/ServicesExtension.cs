@@ -3,12 +3,15 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using JfYu.Data.Extension;
 using JfYu.WeChat;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.Logging;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Http.Diagnostics;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using NGA.Api.Model;
 using NGA.Api.Options;
@@ -18,6 +21,7 @@ using NGA.Models;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -74,7 +78,70 @@ namespace NGA.Api.Extensions
             services.AddHttpContextAccessor();
             return services;
         }
+        public static IServiceCollection AddCustomAuthentication(this IServiceCollection services, IConfiguration configuration)
+        {
+            var JwtConfig = configuration.GetSection("Jwt").Get<JwtSettings>() ?? throw new NullReferenceException(nameof(JwtSettings));
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters()
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidAudience = JwtConfig.Audience,
+                    ValidIssuer = JwtConfig.Issuer,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtConfig.SecretKey))
+                };
+                options.Events = new JwtBearerEvents()
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        var allowAnonymousAttribute = context.HttpContext.GetEndpoint()?.Metadata.OfType<AllowAnonymousAttribute>().FirstOrDefault();
+                        if (allowAnonymousAttribute == null)
+                        {
+                            context.Response.OnStarting(async () =>
+                            {
+                                context.NoResult();
+                                context.Response.Headers.TryAdd("Token-Expired", "true");
+                                context.Response.ContentType = "application/json";
+                                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                                await context.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse<string>()
+                                {
+                                    Code = ResponseCode.Failed,
+                                    ErrorCode= ErrorCode.UnauthorizedError,
+                                    Message =ErrorCode.UnauthorizedError.GetDescription(),
+                                }));
+                            });
+                        }
+                        return Task.CompletedTask;
+                    },
+                    OnForbidden = context =>
+                    {
+                        var allowAnonymousAttribute = context.HttpContext.GetEndpoint()?.Metadata.OfType<AllowAnonymousAttribute>().FirstOrDefault();
+                        if (allowAnonymousAttribute == null)
+                        {
+                            context.Response.OnStarting(async () =>
+                            {
+                                context.NoResult();
+                                context.Response.Headers.TryAdd("Token-Expired", "true");
+                                context.Response.ContentType = "application/json";
+                                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                                await context.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse<string>()
+                                {
+                                    Code = ResponseCode.Failed,
+                                    ErrorCode = ErrorCode.ForbiddenError,
+                                    Message = ErrorCode.ForbiddenError.GetDescription(),
+                                }));
+                            });
+                        }
+                        return Task.CompletedTask;
+                    },
+                };
+            });
 
+            return services;
+        }
         public static IServiceCollection AddCustomApiVersioning(this IServiceCollection services)
         {
             // API Versioning

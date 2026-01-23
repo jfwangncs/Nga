@@ -38,7 +38,8 @@ try
     {
         app.MapOpenApi();
         app.MapScalarApiReference();
-    }     
+    }
+    app.UseAuthentication();
 
     app.UseAuthorization();
 
