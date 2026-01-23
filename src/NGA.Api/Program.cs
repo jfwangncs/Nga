@@ -29,6 +29,7 @@ try
         .AddCustomFluentValidation()
         .AddCustomOpenTelemetry()
         .AddCustomNLog()
+        .AddCustomAuthentication(builder.Configuration)
         .AddCustomOptions(builder.Configuration) 
         .AddCustomInjection(builder.Configuration);
 
