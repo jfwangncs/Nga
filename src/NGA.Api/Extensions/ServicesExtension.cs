@@ -80,7 +80,7 @@ namespace NGA.Api.Extensions
         }
         public static IServiceCollection AddCustomAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
-            var JwtConfig = configuration.GetSection("Jwt").Get<JwtSettings>() ?? throw new NullReferenceException(nameof(JwtSettings));
+            var JwtConfig = configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? throw new NullReferenceException(nameof(JwtSettings));
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters()
