@@ -8,6 +8,7 @@ using NGA.Api.Model.Request;
 using NGA.Api.Model.View;
 using NGA.Api.Options;
 using NGA.Api.Services.Interfaces;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -24,9 +25,9 @@ namespace NGA.Api.Controllers
         [HttpPost("login")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(BaseResponse<LoginResponse>), 200)]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody][Required] LoginRequest request)
         {
-            var authSession = await _miniProgram.LoginAsync(request.Code);
+            var authSession = await _miniProgram.LoginAsync(request.Code!);
 #if DEBUG
             authSession = new JfYu.WeChat.Model.Response.WechatLoginResponse() { OpenId = "OpenID", SessionKey = "SessionKey" };
 #endif
