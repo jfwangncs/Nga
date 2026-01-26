@@ -1,0 +1,551 @@
+openapi: 3.1.1
+info:
+  title: NGA.Api | v1
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/
+paths:
+  /api/Auth/login:
+    post:
+      tags:
+        - Auth
+      parameters:
+        - name: api-version
+          in: query
+          schema:
+            type: string
+        - name: x-api-version
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+          text/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+          application/*+json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfLoginResponse"
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfLoginResponse"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfLoginResponse"
+  /api/Health:
+    get:
+      tags:
+        - Health
+      parameters:
+        - name: api-version
+          in: query
+          schema:
+            type: string
+        - name: x-api-version
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v{version}/Health:
+    get:
+      tags:
+        - Health
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: api-version
+          in: query
+          schema:
+            type: string
+        - name: x-api-version
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/Topic:
+    get:
+      tags:
+        - Topic
+      parameters:
+        - name: PageIndex
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+        - name: PageSize
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+        - name: SearchKey
+          in: query
+          schema:
+            type: string
+        - name: api-version
+          in: query
+          schema:
+            type: string
+        - name: x-api-version
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfPagedDataOfTopic"
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfPagedDataOfTopic"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfPagedDataOfTopic"
+  /api/Topic/{tid}:
+    get:
+      tags:
+        - Topic
+      parameters:
+        - name: tid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: OnlyAuthor
+          in: query
+          schema:
+            type: boolean
+        - name: OnlyImage
+          in: query
+          schema:
+            type: boolean
+        - name: PageIndex
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+        - name: PageSize
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+        - name: SearchKey
+          in: query
+          schema:
+            type: string
+        - name: api-version
+          in: query
+          schema:
+            type: string
+        - name: x-api-version
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfPagedDataOfQueryTopicResponse"
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfPagedDataOfQueryTopicResponse"
+            text/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponseOfPagedDataOfQueryTopicResponse"
+components:
+  schemas:
+    BaseResponseOfLoginResponse:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/ResponseCode"
+        message:
+          type: string
+        errorCode:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/ErrorCode"
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/LoginResponse"
+    BaseResponseOfPagedDataOfQueryTopicResponse:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/ResponseCode"
+        message:
+          type: string
+        errorCode:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/ErrorCode"
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PagedDataOfQueryTopicResponse"
+    BaseResponseOfPagedDataOfTopic:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/ResponseCode"
+        message:
+          type: string
+        errorCode:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/ErrorCode"
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PagedDataOfTopic"
+    ErrorCode:
+      type: integer
+    LoginRequest:
+      type: object
+      properties:
+        phone:
+          type:
+            - "null"
+            - string
+        code:
+          type:
+            - "null"
+            - string
+    LoginResponse:
+      required:
+        - username
+        - token
+      type: object
+      properties:
+        id:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        username:
+          type: string
+        token:
+          type: string
+        expiresIn:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+    PagedDataOfQueryTopicResponse:
+      type: object
+      properties:
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalCount:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/QueryTopicResponse"
+    PagedDataOfReplay:
+      type: object
+      properties:
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalCount:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Replay"
+    PagedDataOfTopic:
+      type: object
+      properties:
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalCount:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Topic"
+    QueryTopicResponse:
+      type: object
+      properties:
+        replay:
+          $ref: "#/components/schemas/PagedDataOfReplay"
+        user:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/User"
+        topic:
+          $ref: "#/components/schemas/Topic"
+    Replay:
+      type: object
+      properties:
+        tid:
+          maxLength: 30
+          type:
+            - "null"
+            - string
+        uid:
+          maxLength: 30
+          type:
+            - "null"
+            - string
+        uName:
+          maxLength: 30
+          type:
+            - "null"
+            - string
+        pid:
+          maxLength: 30
+          type:
+            - "null"
+            - string
+        sort:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        support:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        oppose:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        moblie:
+          maxLength: 40
+          type:
+            - "null"
+            - string
+        postDate:
+          maxLength: 50
+          type:
+            - "null"
+            - string
+        content:
+          type:
+            - "null"
+            - string
+        quotePid:
+          maxLength: 50
+          type:
+            - "null"
+            - string
+        id:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        status:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        createdTime:
+          type: string
+          format: date-time
+        updatedTime:
+          type: string
+          format: date-time
+    ResponseCode:
+      type: integer
+    Topic:
+      type: object
+      properties:
+        url:
+          maxLength: 500
+          type:
+            - "null"
+            - string
+        fid:
+          maxLength: 20
+          type:
+            - "null"
+            - string
+        uid:
+          maxLength: 80
+          type:
+            - "null"
+            - string
+        tid:
+          maxLength: 30
+          type:
+            - "null"
+            - string
+        title:
+          maxLength: 200
+          type:
+            - "null"
+            - string
+        replies:
+          maxLength: 200
+          type:
+            - "null"
+            - string
+        lastReplyer:
+          maxLength: 200
+          type:
+            - "null"
+            - string
+        postDate:
+          maxLength: 200
+          type:
+            - "null"
+            - string
+        thread:
+          maxLength: 200
+          type:
+            - "null"
+            - string
+        condition:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        reptileNum:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        id:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        status:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        createdTime:
+          type: string
+          format: date-time
+        updatedTime:
+          type: string
+          format: date-time
+    User:
+      type: object
+      properties:
+        uid:
+          maxLength: 30
+          type:
+            - "null"
+            - string
+        userName:
+          maxLength: 50
+          type:
+            - "null"
+            - string
+        group:
+          maxLength: 50
+          type:
+            - "null"
+            - string
+        regdate:
+          maxLength: 40
+          type:
+            - "null"
+            - string
+        avatar:
+          maxLength: 100
+          type:
+            - "null"
+            - string
+        id:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        status:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        createdTime:
+          type: string
+          format: date-time
+        updatedTime:
+          type: string
+          format: date-time
+  securitySchemes:
+    Bearer:
+      type: http
+      description: "Input your JWT. The UI will send 'Authorization: Bearer {token}'."
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+  - name: Auth
+  - name: Health
+  - name: Topic
