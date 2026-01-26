@@ -1,12 +1,16 @@
 using JfYu.Data.Extension;
+using JfYu.Data.Model;
 using JfYu.Data.Service;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NGA.Api.Extensions;
+using NGA.Api.Model;
 using NGA.Api.Model.Request;
+using NGA.Api.Model.Response;
+using NGA.Api.Model.View;
 using NGA.Api.Services;
 using NGA.Models;
-using NGA.Models.Entity; 
+using NGA.Models.Entity;
 
 namespace NGA.Api.Controllers
 {
@@ -27,6 +31,7 @@ namespace NGA.Api.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(typeof(BaseResponse<PagedData<Topic>>), 200)]
         public async Task<IActionResult> GetTopics([FromQuery] QueryRequest query)
         {
             var data = await _topicService.GetListAsync(query);
@@ -34,19 +39,20 @@ namespace NGA.Api.Controllers
         }
 
         [HttpGet("{tid}")]
+        [ProducesResponseType(typeof(BaseResponse<PagedData<QueryTopicResponse>>), 200)]
         public async Task<IActionResult> Topic(string tid, [FromQuery] QueryTopicRequest query)
         {
 
-            var _topic = await _topicService.GetOneAsync(q => q.Tid == tid);
-            if (_topic == null)
+            var topic = await _topicService.GetOneAsync(q => q.Tid == tid);
+            if (topic == null)
                 return BadRequest(ErrorCode.TopicNotFound);
 
-            var author = await _replayService.GetOneAsync(q => q.Tid == _topic.Tid && q.Sort == 0);
+            var author = await _replayService.GetOneAsync(q => q.Tid == topic.Tid && q.Sort == 0);
             var replays = (await _replayService.GetListAsync(
                 q => q.Tid.Equals(tid) &&
                 (q.Content.Contains(query.SearchKey) || string.IsNullOrEmpty(query.SearchKey)) &&
                 (!query.OnlyImage || q.Content.Contains("<img")) &&
-                (!query.OnlyAuthor || q.Uid == _topic.Uid || (q.UName == author.UName && q.UName != null)))
+                (!query.OnlyAuthor || q.Uid == topic.Uid || (q.UName == author.UName && q.UName != null)))
                 ).OrderBy(q => q.Sort).AsQueryable().ToPaged(query.PageIndex);
             var quoteReplays = await _replayService.GetListAsync(q => replays.Data.Select(q => q.QuotePid).Contains(q.Pid));
             var quoteReplayUsers = (await _userService.GetListAsync(q => quoteReplays.Select(q => q.Uid).Contains(q.Uid))).Distinct().ToDictionary(q => q.Uid, q => q);
@@ -57,7 +63,7 @@ namespace NGA.Api.Controllers
                 {
                     var Quote = quoteReplays.Where(q => q.Pid == item.QuotePid).FirstOrDefault();
                     if (Quote != null)
-                    { 
+                    {
                         quoteReplayUsers.TryGetValue(Quote.Uid, out User? u);
                         if (Quote != null)
                         {
@@ -71,13 +77,7 @@ namespace NGA.Api.Controllers
             }
             Dictionary<string, User> users = [];
             users = (await _userService.GetListAsync(q => replays.Data.Select(q => q.Uid).Contains(q.Uid))).Distinct().ToDictionary(q => q.Uid, q => q);
-            dynamic result = new
-            {
-                replays,
-                users,
-                topic = _topic,
-            };
-            return Ok(result);
+            return Ok(new QueryTopicResponse() { Replay = replays, Topic = topic, User = users });
         }
 
     }
