@@ -16,7 +16,7 @@ namespace NGA.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class TopicController : CustomController
     {
         public readonly ITopicService _topicService;
