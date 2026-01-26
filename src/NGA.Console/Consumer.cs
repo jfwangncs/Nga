@@ -100,7 +100,7 @@ namespace NGA.Console
 
                             await rabbitMQService.ReceiveAsync<string>(
                                 "topic",
-                                async q => await HandleTopicAsync(q, taskId), prefetchCount: 1, autoAck: true, cancellationToken: _consumerCts.Token);
+                                async q => await HandleTopicAsync(q, taskId), prefetchCount: 10, autoAck: true, cancellationToken: _consumerCts.Token);
                         }
                         catch (OperationCanceledException)
                         {
@@ -182,7 +182,7 @@ namespace NGA.Console
                     _logger.LogInformation("到达维护时间 {Time}，停止消费者", now.ToString("HH:mm"));
                     await StopConsumers();
                 }
-                else if (now.Hour == 6 && now.Minute >= 30 && now.Minute < 35 && !_isRunning)
+                else if (now.Hour == 6 && now.Minute >= 50 && now.Minute < 59 && !_isRunning)
                 {
                     _logger.LogInformation("维护结束 {Time}，启动消费者", now.ToString("HH:mm"));
                     await StartConsumers(stoppingToken);
