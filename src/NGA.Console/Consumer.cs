@@ -100,7 +100,7 @@ namespace NGA.Console
 
                             await rabbitMQService.ReceiveAsync<string>(
                                 "topic",
-                                async q => await HandleTopicAsync(q, taskId), prefetchCount: 10, autoAck: true, cancellationToken: _consumerCts.Token);
+                                async q => await HandleTopicAsync(q, taskId), prefetchCount: 1, autoAck: true, cancellationToken: _consumerCts.Token);
                         }
                         catch (OperationCanceledException)
                         {
