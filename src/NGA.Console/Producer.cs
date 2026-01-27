@@ -128,8 +128,7 @@ namespace NGA.Console
                                     //无新回复/正在采集      
                                     if (topic.ReptileNum >= int.Parse(t.Replies))
                                         continue;
-                                    topic.Replies = t.Replies;
-                                    topic.LastReplyer = t.LastReplyer;
+                                    topic.Replies = t.Replies; 
                                     await _topicService.UpdateAsync(topic);
                                     queueTids.Add(t.Tid);
                                 }
