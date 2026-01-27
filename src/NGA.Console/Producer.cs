@@ -106,12 +106,10 @@ namespace NGA.Console
                             var t = new Topic
                             {
                                 Replies = item.ChildNodes[1].InnerText.Trim(),
-                                Uid = _uidRegex.Match(item.ChildNodes[5].InnerHtml).Groups[1].Value,
-                                LastReplyer = item.ChildNodes[7].ChildNodes[2].InnerText.Trim(),
+                                Uid = _uidRegex.Match(item.ChildNodes[5].InnerHtml).Groups[1].Value, 
                                 PostDate = item.ChildNodes[5].ChildNodes[2].InnerText.Trim(),
                                 Url = item.ChildNodes[3].ChildNodes[1].Attributes["href"].Value.Trim(),
-                                Title = item.ChildNodes[3].InnerText.Trim().Replace("\n", "").Replace("\t", ""),
-                                Thread = _thread,
+                                Title = item.ChildNodes[3].InnerText.Trim().Replace("\n", "").Replace("\t", ""), 
                                 Fid = fid,
                             };
                             if (t.Title == "帖子发布或回复时间超过限制")

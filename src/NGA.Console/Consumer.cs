@@ -230,6 +230,7 @@ namespace NGA.Console
                     if (reptileNum != result.Item1 && result.Item1 != -1)
                     {
                         reptileNum = topic.ReptileNum = result.Item1;
+                        topic.LastReplyTime = DateTime.Now;
                         await _topicService.UpdateAsync(topic);
                     }
                     if (result.Item2)
@@ -374,7 +375,9 @@ namespace NGA.Console
                             replay.Pid = lous[i].SelectSingleNode(".//a[contains(@id,'pid')]").Id.Replace("pid", "").Replace("Anchor", "");
                         GetContextData(replay, htmlDocument, contentNode.ChildNodes[4].InnerHtml);
                         GetFloorData(replay, htmlDocument);
-                        await GetUserInfo(replay.Uid);
+                        var user1 = await GetUserInfo(replay.Uid);
+                        if (sort == 0)
+                            topic.UserName = user1?.UserName ?? "";
                         if (replay.Uid.StartsWith("-1"))
                         {
                             UserinfoJson? uij;
@@ -398,10 +401,10 @@ namespace NGA.Console
 
                 return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
                 // 获取用户信息     
-                async Task GetUserInfo(string uid)
+                async Task<User> GetUserInfo(string uid)
                 {
                     if (uid == null || uid.StartsWith("-") || uid == "0")
-                        return;
+                        return null;
                     var user = await _userService.GetOneAsync(q => q.Uid == uid);
                     if (user == null || (DateTime.Now - user.UpdatedTime).Days > 7)
                     {
@@ -415,13 +418,13 @@ namespace NGA.Console
                             html = await _ngaClient.SendAsync();
                             user.Uid = uid;
                             if (string.IsNullOrEmpty(html))
-                                return;
+                                return null;
                             if (html.Contains("参数错误"))
-                                return;
+                                return null;
                             if (html.Contains("找不到用户"))
-                                return;
+                                return null;
                             if (html.Contains("无此用户"))
-                                return;
+                                return null;
                             var rg = Regex.Match(html, "username\":.+?\"");
                             user.UserName = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
                             //_user.Name = hn.InnerText;
@@ -435,16 +438,18 @@ namespace NGA.Console
                                 await _userService.AddAsync(user);
                             else
                                 await _userService.UpdateAsync(user);
+                            return user;
                         }
                         catch (Exception ex)
                         {
                             if (ex.Message.Contains("无效的 URI")) //用户头像url无效
-                                return;
+                                return null;
                             if (ex.Message == "远程服务器返回错误: (404) 未找到。") //用户本身头像url失效，错误日志不保存
-                                return;
+                                return null;
                             throw;
                         }
                     }
+                    return user;
 
                 }
             }

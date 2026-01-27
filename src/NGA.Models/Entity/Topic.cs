@@ -1,4 +1,5 @@
 using JfYu.Data.Model;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace NGA.Models.Entity
@@ -23,15 +24,12 @@ namespace NGA.Models.Entity
         [MaxLength(200)]
         public string Replies { get; set; }
         [MaxLength(200)]
-        public string LastReplyer { get; set; }
+        public string UserName { get; set; }
+
         [MaxLength(200)]
         public string PostDate { get; set; }
-        [MaxLength(200)]
-        public string Thread { get; set; }
-        /// <summary>
-        /// 0表示主题正常  1正在采集中  -1 错误中断
-        /// </summary>
-        public int Condition { get; set; }
+
+        public DateTime? LastReplyTime { get; set; }
         /// <summary>
         /// 已抓取数
         /// </summary>
