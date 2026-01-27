@@ -28,7 +28,9 @@
           <div class="topic-header">
             <div class="topic-left">
               <div class="topic-info">
-                <div class="topic-author">{{ topic.userName || topic.uid || "用户" }}</div>
+                <div class="topic-author">
+                  {{ topic.userName || topic.uid || "用户" }}
+                </div>
                 <div class="topic-time">{{ formatTime(topic.postDate) }}</div>
               </div>
             </div>
