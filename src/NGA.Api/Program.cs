@@ -23,18 +23,20 @@ try
     });
 
     builder.Services.AddControllers();
-    builder.Services.AddCustomCoreAPI()
+    builder.Services.AddCustomCors()
+        .AddCustomCoreAPI()
         .AddCustomScalar()
         .AddCustomApiVersioning()
         .AddCustomFluentValidation()
         .AddCustomOpenTelemetry()
         .AddCustomNLog()
         .AddCustomAuthentication(builder.Configuration)
-        .AddCustomOptions(builder.Configuration) 
+        .AddCustomOptions(builder.Configuration)
         .AddCustomInjection(builder.Configuration);
 
     var app = builder.Build();
     app.UseHttpLogging();
+    app.UseCors("AllowAll");
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
