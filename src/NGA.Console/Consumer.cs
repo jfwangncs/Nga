@@ -386,7 +386,8 @@ namespace NGA.Console
                             {
                                 replay.UName = GetName(uij.Username);
                             }
-                        }
+                        } else
+                             replay.UName = user1?.UserName ?? "";
 
                         if (replay.Id == 0)
                             await _replayService.AddAsync(replay);

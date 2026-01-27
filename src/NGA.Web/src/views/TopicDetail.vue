@@ -5,73 +5,119 @@
     <main class="main-content">
       <div class="breadcrumb">
         <router-link to="/">首页</router-link>
-        <span class="separator">></span>
-        <router-link to="/">全部主题</router-link>
-        <span class="separator">></span>
-        <span class="current">主题详情</span>
+        <span class="separator">/</span>
+        <router-link to="/">话题列表</router-link>
+        <span class="separator">/</span>
+        <span class="current">详情</span>
       </div>
 
-      <div v-if="topic" class="topic-card">
-        <div class="topic-header">
-          <div class="author-area">
-            <div class="author-avatar"></div>
-            <div class="author-info">
-              <div class="author-name">{{ topic.uid || "用户" }}</div>
-              <div class="post-time">
-                发布于{{ formatTime(topic.postDate) }}
+      <div v-if="topic" class="detail-wrapper">
+        <!-- 主题卡片 -->
+        <div class="topic-card">
+          <div class="topic-header">
+            <h1 class="title">{{ topic.title }}</h1>
+            <div class="meta-row">
+              <div class="author-section">
+                <span class="author">{{ topic.userName || topic.uid || "匿名用户" }}</span>
+                <span class="divider">·</span>
+                <span class="time">{{ formatTime(topic.postDate) }}</span>
+              </div>
+              <div class="stats-section">
+                <span class="stat-item">
+                  <svg class="icon" viewBox="0 0 1024 1024" width="16" height="16">
+                    <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64z m0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z" fill="currentColor"/>
+                    <path d="M464 336a48 48 0 1 0 96 0 48 48 0 1 0-96 0z m72 112h-48c-4.4 0-8 3.6-8 8v272c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V456c0-4.4-3.6-8-8-8z" fill="currentColor"/>
+                  </svg>
+                  {{ replyCount }} 回复
+                </span>
               </div>
             </div>
           </div>
-          <div class="topic-metrics">
-            <span>{{ replyCount }}条评论</span>
-            <span>{{ formatViews(topic.thread) }}次阅读</span>
+          <div class="topic-body">
+            <div class="content" v-html="processContent(mainContent)"></div>
           </div>
         </div>
 
-        <h1 class="topic-title">{{ topic.title }}</h1>
+        <!-- 回复列表 -->
+        <div v-if="filteredReplies.length > 0" class="replies-section">
+          <div class="section-header">
+            <h3>回复 ({{ replyCount }})</h3>
+            <div class="filter-buttons">
+              <button 
+                class="filter-btn" 
+                :class="{ active: onlyAuthor }"
+                @click="toggleOnlyAuthor"
+              >
+                只看楼主
+              </button>
+              <button 
+                class="filter-btn" 
+                :class="{ active: onlyImage }"
+                @click="toggleOnlyImage"
+              >
+                只看图片
+              </button>
+            </div>
+          </div>
 
-        <div class="topic-body" v-html="topic.content || '暂无内容'"></div>
-      </div>
-
-      <div v-if="replies.length > 0" class="replies-section">
-        <div
-          v-for="(reply, index) in replies"
-          :key="reply.id"
-          class="reply-card"
-          :class="index % 2 === 0 ? 'reply-green' : 'reply-blue'"
-        >
-          <div class="reply-header">
-            <div class="reply-left">
-              <div
-                class="reply-avatar"
-                :class="index % 2 === 0 ? 'avatar-green' : 'avatar-blue'"
-              ></div>
-              <div class="reply-info">
-                <div class="reply-author">{{ reply.uName || "用户" }}</div>
-                <div class="reply-time">{{ formatTime(reply.postDate) }}</div>
+          <div class="reply-list">
+            <div
+              v-for="(reply, index) in displayedReplies"
+              :key="reply.id"
+              class="reply-item"
+              :class="index % 2 === 0 ? 'reply-even' : 'reply-odd'"
+            >
+              <div class="reply-number">#{{ (pageIndex - 1) * pageSize + index + 1 }}</div>
+              <div class="reply-content-wrapper">
+                <div class="reply-header">
+                  <span class="author">{{ reply.uName || reply.uid || "匿名" }}</span>
+                  <span class="time">{{ formatTime(reply.postDate) }}</span>
+                </div>
+                <div class="reply-body" v-html="processContent(reply.content)"></div>
+                <div class="reply-footer">
+                  <span class="vote-item like">
+                    <svg viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor">
+                      <path d="M885.9 533.7c16.8-22.2 26.1-49.4 26.1-77.7 0-44.9-25.1-87.4-65.5-111.1a67.67 67.67 0 0 0-34.3-9.3H572.4l6-122.9c1.4-29.7-9.1-57.9-29.5-79.4A106.62 106.62 0 0 0 471 99.9c-52 0-98 35-111.8 85.1l-85.9 311H144c-17.7 0-32 14.3-32 32v364c0 17.7 14.3 32 32 32h601.3c9.2 0 18.2-1.8 26.5-5.4 47.6-20.3 78.3-66.8 78.3-118.4 0-12.6-1.8-25-5.4-37 16.8-22.2 26.1-49.4 26.1-77.7 0-12.6-1.8-25-5.4-37 16.8-22.2 26.1-49.4 26.1-77.7-.2-12.6-2-25.1-5.6-37.1zM184 852V568h81v284h-81z m636.4-353l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 16.5-7.2 32.2-19.6 43l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 16.5-7.2 32.2-19.6 43l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 22.4-13.2 42.6-33.6 51.8H329V564.8l99.5-360.5a44.1 44.1 0 0 1 42.2-32.3c7.6 0 15.1 2.2 21.1 6.7 9.9 7.4 15.2 18.6 14.6 30.5l-9.6 198.4h314.4C829 418.5 840 436.9 840 456c0 16.5-7.2 32.1-19.6 43z"/>
+                    </svg>
+                    {{ reply.support || 0 }}
+                  </span>
+                  <span class="vote-item dislike">
+                    <svg viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor">
+                      <path d="M885.9 490.3c3.6-12 5.4-24.4 5.4-37 0-28.3-9.3-55.5-26.1-77.7 3.6-12 5.4-24.4 5.4-37 0-28.3-9.3-55.5-26.1-77.7 3.6-12 5.4-24.4 5.4-37 0-51.6-30.7-98.1-78.3-118.4a66.1 66.1 0 0 0-26.5-5.4H144c-17.7 0-32 14.3-32 32v364c0 17.7 14.3 32 32 32h129.3l85.8 310.8C372.9 889 418.9 924 470.9 924c29.7 0 57.4-11.8 77.9-33.4 20.5-21.5 31-49.7 29.5-79.4l-6-122.9h239.9c12.1 0 23.9-3.2 34.3-9.3 40.4-23.5 65.5-66.1 65.5-111 0-28.3-9.3-55.5-26.1-77.7zM184 456V172h81v284h-81z m627.2 160.4H496.8l9.6 198.4c.6 11.9-4.7 23.1-14.6 30.5-6.1 4.5-13.6 6.8-21.1 6.7a44.28 44.28 0 0 1-42.2-32.3L329 459.2V172h415.4a56.85 56.85 0 0 1 33.6 51.8c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 19.1-11 37.5-28.8 48.4z"/>
+                    </svg>
+                    {{ reply.oppose || 0 }}
+                  </span>
+                </div>
               </div>
             </div>
-            <div class="reply-actions">
-              <span>👍 {{ reply.support || 0 }}</span>
-              <span>👎 {{ reply.oppose || 0 }}</span>
-            </div>
           </div>
-
-          <div class="reply-content" v-html="reply.content"></div>
         </div>
       </div>
 
-      <div class="pagination">
+      <!-- 分页 -->
+      <div v-if="totalPages > 1" class="pagination">
         <button
-          class="pagination-btn"
+          class="page-btn"
           :disabled="pageIndex <= 1"
           @click="changePage(pageIndex - 1)"
         >
           上一页
         </button>
-        <button class="pagination-num active">{{ pageIndex }}</button>
+
+        <template v-for="page in pageNumbers" :key="page">
+          <button
+            v-if="page !== '...'"
+            class="page-num"
+            :class="{ active: pageIndex === page }"
+            @click="changePage(page)"
+          >
+            {{ page }}
+          </button>
+          <span v-else class="ellipsis">...</span>
+        </template>
+
         <button
-          class="pagination-btn"
+          class="page-btn"
           :disabled="pageIndex >= totalPages"
           @click="changePage(pageIndex + 1)"
         >
@@ -100,10 +146,116 @@ const users = ref({});
 const pageIndex = ref(1);
 const pageSize = ref(20);
 const replyCount = ref(0);
+const onlyAuthor = ref(false);
+const onlyImage = ref(false);
 
 const totalPages = computed(() => {
   return Math.ceil(replyCount.value / pageSize.value);
 });
+
+const pageNumbers = computed(() => {
+  const total = totalPages.value;
+  const current = pageIndex.value;
+  const pages = [];
+
+  // 如果总页数<=5，显示全部
+  if (total <= 5) {
+    for (let i = 1; i <= total; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }
+
+  // 总页数>5时
+  // 始终显示第1页
+  pages.push(1);
+
+  // 如果当前页离第1页很近（<=3），显示前4页
+  if (current <= 3) {
+    pages.push(2, 3, 4);
+    pages.push("...");
+    pages.push(total);
+  }
+  // 如果当前页离最后一页很近（>=total-2），显示后4页
+  else if (current >= total - 2) {
+    pages.push("...");
+    pages.push(total - 3, total - 2, total - 1, total);
+  }
+  // 当前页在中间
+  else {
+    pages.push("...");
+    pages.push(current - 1, current, current + 1);
+    pages.push("...");
+    pages.push(total);
+  }
+
+  return pages;
+});
+
+// 获取主题内容（sort=0的回复）
+const mainContent = computed(() => {
+  const mainReply = replies.value.find(r => r.sort === 0);
+  return mainReply?.content || topic.value?.content || '暂无内容';
+});
+
+// 过滤掉sort=0的回复，只显示真正的回复
+const filteredReplies = computed(() => {
+  return replies.value.filter(r => r.sort !== 0);
+});
+
+// 根据筛选条件显示回复
+const displayedReplies = computed(() => {
+  let result = filteredReplies.value;
+  
+  // 只看楼主
+  if (onlyAuthor.value && topic.value) {
+    const authorUid = topic.value.uid;
+    result = result.filter(r => r.uid === authorUid);
+  }
+  
+  // 只看图片
+  if (onlyImage.value) {
+    result = result.filter(r => {
+      const content = r.content || '';
+      return content.includes('<img') || content.includes('[img');
+    });
+  }
+  
+  return result;
+});
+
+const toggleOnlyAuthor = () => {
+  onlyAuthor.value = !onlyAuthor.value;
+  if (onlyAuthor.value) {
+    onlyImage.value = false;
+  }
+};
+
+const toggleOnlyImage = () => {
+  onlyImage.value = !onlyImage.value;
+  if (onlyImage.value) {
+    onlyAuthor.value = false;
+  }
+};
+
+// 处理内容中的图片URL，解决跨域问题
+const processContent = (content) => {
+  if (!content) return '';
+  
+  // 处理图片链接，添加referrerPolicy
+  let processed = content.replace(
+    /<img([^>]*?)src=["']([^"']+)["']([^>]*?)>/gi,
+    (match, before, src, after) => {
+      // 如果是相对路径或已经是完整URL
+      let imgSrc = src;
+      
+      // NGA图片通常需要referrer policy
+      return `<img${before}src="${imgSrc}"${after} referrerpolicy="no-referrer" loading="lazy">`;
+    }
+  );
+  
+  return processed;
+};
 
 const fetchTopicDetail = async () => {
   try {
@@ -167,22 +319,23 @@ onMounted(() => {
 </script>
 
 <style scoped>
+* {
+  box-sizing: border-box;
+}
+
 .topic-detail-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8f9fa;
+  background: #f0f2f5;
 }
 
 .main-content {
-  max-width: 1440px;
+  max-width: 1000px;
   width: 100%;
   margin: 0 auto;
-  padding: 32px 32px 0 32px;
+  padding: 20px 24px 40px;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
 }
 
 .breadcrumb {
@@ -190,201 +343,400 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .breadcrumb a {
-  color: #2196f3;
+  color: rgba(0, 0, 0, 0.65);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.breadcrumb a:hover {
+  color: #1890ff;
 }
 
 .breadcrumb .separator {
-  color: #999999;
+  color: rgba(0, 0, 0, 0.25);
+  margin: 0 4px;
 }
 
 .breadcrumb .current {
-  color: #666666;
+  color: rgba(0, 0, 0, 0.85);
 }
 
+.detail-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 主题卡片 */
 .topic-card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  margin-bottom: 0;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
 }
 
 .topic-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+  line-height: 1.4;
+  margin: 0 0 16px 0;
+}
+
+.meta-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-}
-
-.author-area {
-  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+.author-section {
+  display: flex;
   align-items: center;
-}
-
-.author-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #ffe0b2;
-}
-
-.author-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.author-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333333;
-}
-
-.post-time {
-  font-size: 13px;
-  color: #999999;
-}
-
-.topic-metrics {
-  display: flex;
-  gap: 20px;
+  gap: 8px;
   font-size: 14px;
-  font-weight: 500;
-  color: #666666;
 }
 
-.topic-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 16px;
-  line-height: 1.4;
+.author {
+  color: rgba(0, 0, 0, 0.85);
+  font-weight: 500;
+}
+
+.divider {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.time {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.stats-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.stat-item .icon {
+  color: rgba(0, 0, 0, 0.25);
 }
 
 .topic-body {
+  padding: 24px;
+}
+
+.content {
   font-size: 15px;
-  color: #444444;
-  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.85);
+  line-height: 1.74;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
+.content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 2px;
+  margin: 16px 0;
+  display: block;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.content :deep(p) {
+  margin: 0 0 12px 0;
+}
+
+.content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.content :deep(a) {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.content :deep(a:hover) {
+  color: #40a9ff;
+}
+
+/* 回复区域 */
 .replies-section {
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+}
+
+.section-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.reply-card {
-  background: #ffffff;
-  padding: 20px;
+.section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.filter-buttons {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.reply-card.reply-green {
-  background: #f1f8e9;
+.filter-btn {
+  padding: 4px 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.3s;
 }
 
-.reply-card.reply-blue {
-  background: #e3f2fd;
+.filter-btn:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.filter-btn.active {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.reply-list {
+  padding: 0;
+}
+
+.reply-item {
+  display: flex;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.3s;
+}
+
+.reply-item.reply-even {
+  background-color: #f1f8e9;
+}
+
+.reply-item.reply-odd {
+  background-color: #e3f2fd;
+}
+
+.reply-item:last-child {
+  border-bottom: none;
+}
+
+.reply-item:hover {
+  opacity: 0.9;
+}
+
+.reply-number {
+  flex-shrink: 0;
+  width: 36px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  background: #fafafa;
+  border-radius: 2px;
+}
+
+.reply-content-wrapper {
+  flex: 1;
+  min-width: 0;
 }
 
 .reply-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.reply-left {
-  display: flex;
   gap: 12px;
-  align-items: center;
+  margin-bottom: 8px;
 }
 
-.reply-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-}
-
-.reply-avatar.avatar-green {
-  background: #c5e1a5;
-}
-
-.reply-avatar.avatar-blue {
-  background: #b3e5fc;
-}
-
-.reply-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.reply-author {
+.reply-header .author {
   font-size: 14px;
-  color: #333333;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
 }
 
-.reply-time {
-  font-size: 12px;
-  color: #999999;
+.reply-header .time {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
 }
 
-.reply-actions {
+.reply-body {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.85);
+  line-height: 1.74;
+  margin-bottom: 8px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.reply-body :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 2px;
+  margin: 12px 0;
+  display: block;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.reply-body :deep(p) {
+  margin: 0 0 8px 0;
+}
+
+.reply-body :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.reply-body :deep(a) {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.reply-body :deep(a:hover) {
+  color: #40a9ff;
+}
+
+.reply-footer {
   display: flex;
   gap: 16px;
+  margin-top: 8px;
+}
+
+.vote-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
-  color: #666666;
+  color: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: all 0.3s;
+  user-select: none;
 }
 
-.reply-content {
-  font-size: 14px;
-  color: #444444;
-  line-height: 1.6;
+.vote-item svg {
+  flex-shrink: 0;
 }
 
+.vote-item.like:hover {
+  color: #52c41a;
+}
+
+.vote-item.dislike:hover {
+  color: #ff4d4f;
+}
+
+.action-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* 分页 */
 .pagination {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 8px;
   padding: 24px 0;
 }
 
-.pagination-btn,
-.pagination-num {
-  min-width: 80px;
-  height: 36px;
-  padding: 0 16px;
-  background: #ffffff;
-  border-radius: 6px;
+.page-btn,
+.page-num {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
   font-size: 14px;
-  color: #666666;
-  transition: all 0.2s;
+  color: rgba(0, 0, 0, 0.85);
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.3s;
+  line-height: 30px;
 }
 
-.pagination-btn:hover:not(:disabled) {
+.page-btn {
+  padding: 0 15px;
+}
+
+.page-btn:hover:not(:disabled),
+.page-num:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.page-btn:disabled {
+  color: rgba(0, 0, 0, 0.25);
   background: #f5f5f5;
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
+  border-color: #d9d9d9;
   cursor: not-allowed;
 }
 
-.pagination-num {
-  min-width: 36px;
-  padding: 0;
+.page-num.active {
+  color: #1890ff;
+  border-color: #1890ff;
+  font-weight: 500;
 }
 
-.pagination-num.active {
-  background: #ff9800;
-  color: #ffffff;
-  font-weight: 600;
+.ellipsis {
+  min-width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.25);
+  user-select: none;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 12px 16px 24px;
+  }
+
+  .topic-header {
+    padding: 16px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .topic-body {
+    padding: 16px;
+  }
+
+  .reply-item {
+    padding: 12px 16px;
+  }
+
+  .reply-number {
+    display: none;
+  }
 }
 </style>
