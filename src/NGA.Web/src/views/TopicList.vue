@@ -130,7 +130,7 @@ const router = useRouter();
 
 const topics = ref([]);
 const pageIndex = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(10);
 const totalCount = ref(0);
 const searchKey = ref("");
 
@@ -262,7 +262,7 @@ onMounted(() => {
 .topic-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
 .topic-card {
