@@ -213,6 +213,7 @@ namespace NGA.Api.Extensions
                    }))
                .WithTracing(tracing => tracing
                     .AddSource(ServiceName)
+                    .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddEntityFrameworkCoreInstrumentation()
                     .AddRabbitMQInstrumentation()
@@ -220,6 +221,7 @@ namespace NGA.Api.Extensions
                     .AddOtlpExporter())
                .WithMetrics(metrics => metrics
                     .AddMeter(ServiceName)
+                    .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddProcessInstrumentation()

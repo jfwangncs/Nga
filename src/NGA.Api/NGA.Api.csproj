@@ -24,6 +24,7 @@
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.Middleware" Version="10.2.0" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
 		<PackageReference Include="Scalar.AspNetCore" Version="2.12.6" />
 		<PackageReference Include="Microsoft.Extensions.Compliance.Redaction" Version="10.2.0" />
 		<PackageReference Include="NLog" Version="6.0.7" />
