@@ -20,6 +20,7 @@
 		<PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
 		<PackageReference Include="JfYu.WeChat" Version="8.0.1" />
+		<PackageReference Include="Mapster" Version="7.4.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.Middleware" Version="10.2.0" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />

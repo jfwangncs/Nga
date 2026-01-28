@@ -31,7 +31,7 @@ namespace NGA.Api.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(BaseResponse<PagedData<Topic>>), 200)]
+        [ProducesResponseType(typeof(BaseResponse<PagedData<TopicResponse>>), 200)]
         public async Task<IActionResult> GetTopics([FromQuery] QueryRequest query)
         {
             var data = await _topicService.GetListAsync(query);
