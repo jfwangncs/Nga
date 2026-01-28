@@ -19,6 +19,7 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Net;
 using System.Runtime.Intrinsics.X86;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -306,14 +307,12 @@ namespace NGA.Console
                     _logger.LogInformation($"{taskId}-{topic.Title},{page}:找不到用户信息");
                     return new Tuple<int, bool>(-1, true);
                 }
-                var anonymousReg = Regex.Matches(userInfoAll, @"""-1"":{.*?username{1}.*?}", RegexOptions.IgnoreCase);
-                var anonymous = new Dictionary<string, UserinfoJson>(anonymousReg.Count);
-                foreach (Match item in anonymousReg)
+
+                var allUser = await GetAllUser(userInfoAll);
+                if (allUser == null || allUser.Count <= 0)
                 {
-                    var value = $"{{{item.Value}}}}}}}";
-                    var data = JsonConvert.DeserializeObject<Dictionary<string, UserinfoJson>>(value);
-                    if (data != null)
-                        anonymous.Add(data.FirstOrDefault().Key, data.FirstOrDefault().Value);
+                    _logger.LogInformation($"{taskId}-{topic.Title},{page}:找不到用户信息");
+                    return new Tuple<int, bool>(-1, true);
                 }
                 int maxPage = 0;
                 var s = $"var __PAGE = {{0:'/read.php?tid={topic.Tid}',";
@@ -376,25 +375,23 @@ namespace NGA.Console
                             replay.Pid = lous[i].SelectSingleNode(".//a[contains(@id,'pid')]").Id.Replace("pid", "").Replace("Anchor", "");
                         GetContextData(replay, htmlDocument, contentNode.ChildNodes[4].InnerHtml);
                         GetFloorData(replay, htmlDocument);
-                        if (replay.Uid.StartsWith("-1"))
+                        allUser.TryGetValue(replay.Uid, out UserinfoJson? uij);
+                        if (uij != null)
                         {
-                            UserinfoJson? uij;
-                            var a = anonymous.TryGetValue(replay.Uid, out uij);
-                            if (uij != null)
+                            await UpdateUserInfo(uij);
+                            if (replay.Uid.StartsWith("-"))
                             {
                                 replay.UName = GetName(uij.Username);
                                 if (sort == 0)
                                     topic.UserName = replay.UName;
                             }
+                            else
+                            {
+                                replay.UName = uij.Username;
+                                if (sort == 0)
+                                    topic.UserName = replay.UName;
+                            }
                         }
-                        else
-                        {
-                            var user1 = await GetUserInfo(replay.Uid);
-                            if (sort == 0)
-                                topic.UserName = user1?.UserName ?? "";
-                            replay.UName = user1?.UserName ?? "";
-                        }
-
                         if (replay.Id == 0)
                             await _replayService.AddAsync(replay);
                         else
@@ -405,14 +402,13 @@ namespace NGA.Console
                         _logger.LogError(ex, "{TaskId}-{Tid}-{Title}-{Page}读取楼层出错", taskId, topic.Tid, topic.Title, page);
                     }
                 }
-
                 return new Tuple<int, bool>(lastsort, maxPage > page ? false : true);
-                // 获取用户信息     
-                async Task<User> GetUserInfo(string uid)
+
+                async Task UpdateUserInfo(UserinfoJson userinfo)
                 {
-                    if (uid == null || uid.StartsWith("-") || uid == "0")
-                        return null;
-                    var user = await _userService.GetOneAsync(q => q.Uid == uid);
+                    if (userinfo == null || userinfo.Uid <= 0)
+                        return;
+                    var user = await _userService.GetOneAsync(q => q.Uid == userinfo.Uid.ToString());
                     if (user == null || (DateTime.Now - user.UpdatedTime).Days > 7)
                     {
                         if (user == null)
@@ -421,17 +417,17 @@ namespace NGA.Console
                         try
                         {
                             int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30));
-                            _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={uid}";
+                            _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={userinfo.Uid}";
                             html = await _ngaClient.SendAsync();
-                            user.Uid = uid;
+                            user.Uid = userinfo.Uid.ToString();
                             if (string.IsNullOrEmpty(html))
-                                return null;
+                                return;
                             if (html.Contains("参数错误"))
-                                return null;
+                                return;
                             if (html.Contains("找不到用户"))
-                                return null;
+                                return;
                             if (html.Contains("无此用户"))
-                                return null;
+                                return;
                             var rg = Regex.Match(html, "username\":.+?\"");
                             user.UserName = rg.ToString().Replace("\"", "").Split(':').ElementAtOrDefault(1) ?? "";
                             //_user.Name = hn.InnerText;
@@ -441,26 +437,96 @@ namespace NGA.Console
                             user.Regdate = rg.ToString().Replace("\"", "").Replace(",", "").Split(':').ElementAtOrDefault(1) ?? "";
                             rg = Regex.Match(html, "avatar\":.+?\"");
                             user.Avatar = rg.ToString().Replace("\"", "").Replace("http:", "").Split(':').ElementAtOrDefault(1) ?? "";
+                            user.UserName = string.IsNullOrEmpty(user.UserName) ? userinfo.Username : user.UserName;
+                            user.Avatar = string.IsNullOrEmpty(user.Avatar) ? userinfo.Avatar : user.Avatar;
                             if (user.Id == 0)
                                 await _userService.AddAsync(user);
                             else
                                 await _userService.UpdateAsync(user);
-                            return user;
                         }
                         catch (Exception ex)
                         {
                             if (ex.Message.Contains("无效的 URI")) //用户头像url无效
-                                return null;
+                                return;
                             if (ex.Message == "远程服务器返回错误: (404) 未找到。") //用户本身头像url失效，错误日志不保存
-                                return null;
+                                return;
                             throw;
                         }
                     }
-                    return user;
+                }
+                async Task<Dictionary<string, UserinfoJson>?> GetAllUser(string userInfoAll)
+                {
+                    try
+                    {
+                        // 提取 commonui.userInfo.setAll( ... ) 中的JSON对象
+                        var startPattern = "commonui.userInfo.setAll(";
+                        var startIndex = userInfoAll.IndexOf(startPattern);
+                        if (startIndex >= 0)
+                        {
+                            startIndex += startPattern.Length;
 
+                            // 使用括号平衡算法找到正确的结束位置
+                            int braceDepth = 0;
+                            int parenDepth = 0;
+                            int endIndex = startIndex;
+                            bool inString = false;
+                            char stringChar = '\0';
+
+                            for (int i = startIndex; i < userInfoAll.Length; i++)
+                            {
+                                char c = userInfoAll[i];
+
+                                // 处理字符串内的字符
+                                if (inString)
+                                {
+                                    if (c == stringChar && (i == 0 || userInfoAll[i - 1] != '\\'))
+                                    {
+                                        inString = false;
+                                    }
+                                    continue;
+                                }
+
+                                // 检测字符串开始
+                                if (c == '"' || c == '\'')
+                                {
+                                    inString = true;
+                                    stringChar = c;
+                                    continue;
+                                }
+
+                                // 跟踪括号深度
+                                if (c == '{') braceDepth++;
+                                else if (c == '}') braceDepth--;
+                                else if (c == '(') parenDepth++;
+                                else if (c == ')')
+                                {
+                                    // 当所有括号都匹配且遇到 )，说明找到了 setAll() 的结束括号
+                                    if (braceDepth == 0 && parenDepth == 0)
+                                    {
+                                        endIndex = i;
+                                        break;
+                                    }
+                                    parenDepth--;
+                                }
+                            }
+
+                            if (endIndex > startIndex)
+                            {
+                                var jsonContent = userInfoAll.Substring(startIndex, endIndex - startIndex).Trim();
+                                return JsonConvert.DeserializeObject<Dictionary<string, UserinfoJson>>(jsonContent);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "{TaskId}-{Tid}-{Title},{Page}:解析用户信息失败，尝试备用方法", taskId, topic.Tid, topic.Title, page);
+                    }
+                    return default;
                 }
             }
         }
+       
+
 
         //获取楼层数据
         protected void GetFloorData(Replay floor, HtmlDocument doc)
