@@ -123,8 +123,8 @@ namespace NGA.Api.Extensions
                                 await context.Response.WriteAsync(JsonSerializer.Serialize(new BaseResponse<string>()
                                 {
                                     Code = ResponseCode.Failed,
-                                    ErrorCode= ErrorCode.UnauthorizedError,
-                                    Message =ErrorCode.UnauthorizedError.GetDescription(),
+                                    ErrorCode = ErrorCode.UnauthorizedError,
+                                    Message = ErrorCode.UnauthorizedError.GetDescription(),
                                 }));
                             });
                         }
@@ -213,7 +213,18 @@ namespace NGA.Api.Extensions
                    }))
                .WithTracing(tracing => tracing
                     .AddSource(ServiceName)
-                    .AddAspNetCoreInstrumentation()
+                    .AddAspNetCoreInstrumentation(options =>
+                    {
+                        // 过滤掉健康检查、监控端点和静态资源的追踪
+                        options.Filter = (httpContext) =>
+                        {
+                            var path = httpContext.Request.Path.Value?.ToLowerInvariant() ?? "";
+                            return !path.Contains("/health")
+                                && !path.Contains("/metrics")
+                                && !path.StartsWith("/scalar")
+                                && !path.StartsWith("/openapi");
+                        };
+                    })
                     .AddHttpClientInstrumentation()
                     .AddEntityFrameworkCoreInstrumentation()
                     .AddRabbitMQInstrumentation()
@@ -259,7 +270,7 @@ namespace NGA.Api.Extensions
             services.AddValidatorsFromAssemblyContaining<Program>();
             services.AddFluentValidationAutoValidation(options => options.DisableDataAnnotationsValidation = true);
             return services;
-        }       
+        }
 
         public static void UseCustomExceptionHandler(this WebApplication app)
         {
