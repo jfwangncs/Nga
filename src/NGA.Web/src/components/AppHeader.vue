@@ -1,6 +1,5 @@
 <template>
   <header class="app-header">
-    <meta name="google-adsense-account" content="ca-pub-6574104985269682" />
     <div class="header-content">
       <div class="header-left">
         <router-link to="/" class="logo">NGB</router-link>
