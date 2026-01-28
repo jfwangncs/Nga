@@ -103,13 +103,16 @@ namespace NGA.Console
                         string _thread = htmlDocument.DocumentNode.SelectSingleNode("//*[@class='nav_link']").InnerText;
                         foreach (var item in allnodes)
                         {
+                            var uid = _uidRegex.Match(item.ChildNodes[5].InnerHtml).Groups[1].Value;
+                            if (uid.StartsWith("#anony"))
+                                uid = "-1";
                             var t = new Topic
                             {
                                 Replies = item.ChildNodes[1].InnerText.Trim(),
-                                Uid = _uidRegex.Match(item.ChildNodes[5].InnerHtml).Groups[1].Value, 
+                                Uid = uid,
                                 PostDate = item.ChildNodes[5].ChildNodes[2].InnerText.Trim(),
                                 Url = item.ChildNodes[3].ChildNodes[1].Attributes["href"].Value.Trim(),
-                                Title = item.ChildNodes[3].InnerText.Trim().Replace("\n", "").Replace("\t", ""), 
+                                Title = item.ChildNodes[3].InnerText.Trim().Replace("\n", "").Replace("\t", ""),
                                 Fid = fid,
                             };
                             if (t.Title == "帖子发布或回复时间超过限制")
@@ -128,7 +131,9 @@ namespace NGA.Console
                                     //无新回复/正在采集      
                                     if (topic.ReptileNum >= int.Parse(t.Replies))
                                         continue;
-                                    topic.Replies = t.Replies; 
+                                    topic.Replies = t.Replies;
+                                    if (topic.Uid != t.Uid)
+                                        topic.Uid = t.Uid;
                                     await _topicService.UpdateAsync(topic);
                                     queueTids.Add(t.Tid);
                                 }
@@ -151,7 +156,7 @@ namespace NGA.Console
                         await _rabbitMQService.SendBatchAsync(QUEUE_NAME, queueTids);
                         _queuedItemsCounter.Add(queueTids.Count, new KeyValuePair<string, object?>("fid", fid));
                         _logger.LogInformation("共发送{count}条到队列", queueTids.Count);
-                    } 
+                    }
                 }
                 await RandomDelayExtension.GetRandomDelayAsync();
                 startPage = startPage > 3 ? 1 : ++startPage;

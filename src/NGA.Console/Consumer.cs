@@ -18,6 +18,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Net;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -375,9 +376,6 @@ namespace NGA.Console
                             replay.Pid = lous[i].SelectSingleNode(".//a[contains(@id,'pid')]").Id.Replace("pid", "").Replace("Anchor", "");
                         GetContextData(replay, htmlDocument, contentNode.ChildNodes[4].InnerHtml);
                         GetFloorData(replay, htmlDocument);
-                        var user1 = await GetUserInfo(replay.Uid);
-                        if (sort == 0)
-                            topic.UserName = user1?.UserName ?? "";
                         if (replay.Uid.StartsWith("-1"))
                         {
                             UserinfoJson? uij;
@@ -385,9 +383,17 @@ namespace NGA.Console
                             if (uij != null)
                             {
                                 replay.UName = GetName(uij.Username);
+                                if (sort == 0)
+                                    topic.UserName = replay.UName;
                             }
-                        } else
-                             replay.UName = user1?.UserName ?? "";
+                        }
+                        else
+                        {
+                            var user1 = await GetUserInfo(replay.Uid);
+                            if (sort == 0)
+                                topic.UserName = user1?.UserName ?? "";
+                            replay.UName = user1?.UserName ?? "";
+                        }
 
                         if (replay.Id == 0)
                             await _replayService.AddAsync(replay);
