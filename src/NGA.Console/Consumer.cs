@@ -269,8 +269,7 @@ namespace NGA.Console
             }
 
             async Task<Tuple<int, bool>> MainAsync(Topic topic, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
-            {
-                int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddSeconds(-30));
+            { 
                 HtmlDocument htmlDocument = new HtmlDocument();
                 _ngaClient.Url = $"https://bbs.nga.cn/read.php?tid={topic.Tid}&page={page}";
                 _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
@@ -415,9 +414,9 @@ namespace NGA.Console
                             user = new User();
                         var html = "";
                         try
-                        {
-                            int timeStamp = UnixTime.GetUnixTime(DateTime.Now.AddMinutes(-30));
+                        { 
                             _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={userinfo.Uid}";
+                            _ngaClient.RequestCookies = new CookieContainer();
                             html = await _ngaClient.SendAsync();
                             user.Uid = userinfo.Uid.ToString();
                             if (string.IsNullOrEmpty(html))
