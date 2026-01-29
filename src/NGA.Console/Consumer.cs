@@ -415,8 +415,7 @@ namespace NGA.Console
                         var html = "";
                         try
                         { 
-                            _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={userinfo.Uid}";
-                            _ngaClient.RequestCookies = new CookieContainer();
+                            _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={userinfo.Uid}"; 
                             html = await _ngaClient.SendAsync();
                             user.Uid = userinfo.Uid.ToString();
                             if (string.IsNullOrEmpty(html))
