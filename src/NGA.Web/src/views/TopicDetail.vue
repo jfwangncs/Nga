@@ -115,19 +115,30 @@
                   <div class="quote-header">
                     <span class="quote-icon">↳</span>
                     <UserAvatar
-                      :avatar="getQuoteUser(getQuoteReply(reply.quotePid)?.uid)?.avatar || ''"
-                      :username="getQuoteUser(getQuoteReply(reply.quotePid)?.uid)?.userName || '用户'"
+                      :avatar="
+                        getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
+                          ?.avatar || ''
+                      "
+                      :username="
+                        getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
+                          ?.userName || '用户'
+                      "
                       size="small"
                     />
                     <span class="quote-author">{{
-                      getQuoteUser(getQuoteReply(reply.quotePid)?.uid)?.userName ||
+                      getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
+                        ?.userName ||
                       getQuoteReply(reply.quotePid)?.uName ||
                       "用户"
                     }}</span>
-                    <span class="quote-floor">#{{ getQuoteReply(reply.quotePid)?.sort }}</span>
+                    <span class="quote-floor"
+                      >#{{ getQuoteReply(reply.quotePid)?.sort }}</span
+                    >
                   </div>
                   <div class="quote-content">
-                    {{ truncateContent(getQuoteReply(reply.quotePid)?.content) }}
+                    {{
+                      truncateContent(getQuoteReply(reply.quotePid)?.content)
+                    }}
                   </div>
                 </div>
 
@@ -330,7 +341,7 @@ const getQuoteReply = (quotePid) => {
   if (!quotePid) return null;
   // 在 quoteReplies 中查找 pid 匹配的回复
   const replies = Object.values(quoteReplies.value);
-  return replies.find(reply => reply.pid === quotePid) || null;
+  return replies.find((reply) => reply.pid === quotePid) || null;
 };
 
 // 获取引用用户信息
@@ -343,7 +354,10 @@ const getQuoteUser = (uid) => {
 const truncateContent = (content, maxLength = 100) => {
   if (!content) return "无内容";
   // 移除HTML标签
-  const text = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  const text = content
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + "...";
 };
@@ -403,7 +417,10 @@ const fetchTopicDetail = async (append = false) => {
       }
 
       users.value = { ...users.value, ...(data.user || {}) };
-      quoteReplies.value = { ...quoteReplies.value, ...(data.quoteReplay || {}) };
+      quoteReplies.value = {
+        ...quoteReplies.value,
+        ...(data.quoteReplay || {}),
+      };
       quoteUsers.value = { ...quoteUsers.value, ...(data.quoteUser || {}) };
       replyCount.value = data.replay?.totalCount || 0;
     }
@@ -846,14 +863,22 @@ onMounted(() => {
 .quote-box {
   margin-bottom: 12px;
   padding: 12px;
-  background: linear-gradient(135deg, rgba(93, 173, 226, 0.05) 0%, rgba(52, 152, 219, 0.05) 100%);
-  border-left: 3px solid #4A90E2;
+  background: linear-gradient(
+    135deg,
+    rgba(93, 173, 226, 0.05) 0%,
+    rgba(52, 152, 219, 0.05) 100%
+  );
+  border-left: 3px solid #4a90e2;
   border-radius: 6px;
   transition: all 0.3s;
 }
 
 .quote-box:hover {
-  background: linear-gradient(135deg, rgba(93, 173, 226, 0.08) 0%, rgba(52, 152, 219, 0.08) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(93, 173, 226, 0.08) 0%,
+    rgba(52, 152, 219, 0.08) 100%
+  );
   border-left-color: #5dade2;
 }
 
@@ -866,14 +891,14 @@ onMounted(() => {
 
 .quote-icon {
   font-size: 18px;
-  color: #4A90E2;
+  color: #4a90e2;
   font-weight: bold;
 }
 
 .quote-author {
   font-size: 13px;
   font-weight: 600;
-  color: #4A90E2;
+  color: #4a90e2;
 }
 
 .quote-floor {
