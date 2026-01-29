@@ -8,14 +8,9 @@
         <input
           v-model="searchKey"
           type="text"
-          placeholder="通过关键词或标题搜索..."
+          placeholder="搜索..."
           @keyup.enter="handleSearch"
         />
-      </div>
-
-      <div class="pagination-info">
-        <span>共显示 {{ totalCount }} 个主题</span>
-        <span>第 {{ pageIndex }} 页，共 {{ totalPages }} 页</span>
       </div>
 
       <div class="topic-list">
@@ -165,6 +160,7 @@ const handleSearch = () => {
 const changePage = (page) => {
   pageIndex.value = page;
   fetchTopics();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 const goToDetail = (tid) => {
