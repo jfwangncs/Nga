@@ -3,6 +3,7 @@ using JfYu.Data.Extension;
 using JfYu.Data.Model;
 using JfYu.Data.Service;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 using NGA.Api.Model.Request;
 using NGA.Api.Model.Response;
 using NGA.Models;
@@ -14,23 +15,26 @@ namespace NGA.Api.Services
     {
         public async Task<PagedData<TopicResponse>> GetListAsync(QueryRequest query)
         {
-            var topicsQuery = ReadonlyContext.Topics
-                .GroupJoin(
-                    ReadonlyContext.Users,
-                    topic => topic.Uid,
-                    user => user.Uid,
-                    (topic, userGroup) => new { topic, userGroup })
-                .SelectMany(
-                    x => x.userGroup.DefaultIfEmpty(),
-                    (x, user) => new
-                    {
-                        Topic = x.topic,
-                        Avatar = user != null ? user.Avatar : null
-                    })
-                .Where(x => string.IsNullOrEmpty(query.SearchKey) || x.Topic.Title.Contains(query.SearchKey))
-                .OrderByDescending(x => x.Topic.LastReplyTime ?? DateTime.MinValue);
+            var topicsQuery = ReadonlyContext.Topics.Where(x => string.IsNullOrEmpty(query.SearchKey) || x.Title.Contains(query.SearchKey))
+                .OrderByDescending(x => x.LastReplyTime ?? DateTime.MinValue);
+            var topic = await topicsQuery.ToPagedAsync(query.PageIndex, query.PageSize);
+            var avatars = await ReadonlyContext.Users.Where(u => topic.Data.Select(t => t.Uid).Contains(u.Uid))
+                .Select(u => new { u.Uid, u.Avatar })
+                .ToDictionaryAsync(u => u.Uid, u => u.Avatar ?? "");
+             
+            var responses = topic.Data.Select(t =>
+            {
+                var response = t.Adapt<TopicResponse>();
+                response.Avatar = avatars.TryGetValue(t.Uid, out var avatar) ? avatar : "";
+                return response;
+            }).ToList();
 
-            return await topicsQuery.ToPagedAsync(q => { return q.Select(x => { var d = x.Topic.Adapt<TopicResponse>(); d.Avatar = x.Avatar ?? ""; return d; }); }, query.PageIndex, query.PageSize);
+            return new PagedData<TopicResponse>()
+            {
+                Data = responses,
+                TotalCount = topic.TotalCount,
+                TotalPages = topic.TotalPages,
+            };
         }
     }
 }
