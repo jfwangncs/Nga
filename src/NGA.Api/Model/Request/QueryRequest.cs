@@ -1,3 +1,5 @@
+using NGA.Api.Constant;
+
 namespace NGA.Api.Model.Request
 {
     public class QueryRequest
@@ -7,5 +9,7 @@ namespace NGA.Api.Model.Request
         public int PageSize { get; set; } = 10;
 
         public string SearchKey { get; set; } = "";
+
+        public CatalogEnum Catalog { get; set; } = CatalogEnum.All;
     }
 }
