@@ -13,6 +13,25 @@
         />
       </div>
 
+      <div class="catalog-filters">
+        <button
+          class="catalog-btn"
+          :class="{ active: catalog === 'DaXuanWo' }"
+          @click="selectCatalog('DaXuanWo')"
+        >
+          <span class="catalog-icon">🌀</span>
+          <span>大漩涡</span>
+        </button>
+        <button
+          class="catalog-btn"
+          :class="{ active: catalog === 'Cosplay' }"
+          @click="selectCatalog('Cosplay')"
+        >
+          <span class="catalog-icon">🎭</span>
+          <span>Cosplay</span>
+        </button>
+      </div>
+
       <div class="topic-list">
         <div
           v-for="topic in topics"
@@ -136,6 +155,7 @@ const pageIndex = ref(1);
 const pageSize = ref(10);
 const totalCount = ref(0);
 const searchKey = ref("");
+const catalog = ref("All"); // 默认为All
 
 const totalPages = computed(() => {
   return Math.ceil(totalCount.value / pageSize.value);
@@ -147,6 +167,7 @@ const fetchTopics = async () => {
       PageIndex: pageIndex.value,
       PageSize: pageSize.value,
       SearchKey: searchKey.value,
+      Catalog: catalog.value,
     });
 
     if (data) {
@@ -159,6 +180,16 @@ const fetchTopics = async () => {
 };
 
 const handleSearch = () => {
+  pageIndex.value = 1;
+  fetchTopics();
+};
+
+const selectCatalog = (selectedCatalog) => {
+  if (catalog.value === selectedCatalog) {
+    catalog.value = "All"; // 再次点击取消筛选
+  } else {
+    catalog.value = selectedCatalog;
+  }
   pageIndex.value = 1;
   fetchTopics();
 };
@@ -262,6 +293,52 @@ onMounted(() => {
 
 .search-bar input::placeholder {
   color: #999999;
+}
+
+.catalog-filters {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.catalog-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #ffffff;
+  border: 2px solid #e0e0e0;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.catalog-btn:hover {
+  border-color: #4A90E2;
+  color: #4A90E2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(93, 173, 226, 0.2);
+}
+
+.catalog-btn.active {
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(93, 173, 226, 0.3);
+}
+
+.catalog-btn.active:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.catalog-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .pagination-info {
