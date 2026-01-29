@@ -86,9 +86,7 @@
               class="reply-item"
               :class="index % 2 === 0 ? 'reply-even' : 'reply-odd'"
             >
-              <div class="reply-number">
-                #{{ (pageIndex - 1) * pageSize + index + 1 }}
-              </div>
+              <div class="reply-number">#{{ reply.sort }}</div>
               <UserAvatar
                 :avatar="getUserAvatar(reply.uid)"
                 :username="reply.uName || reply.uid || '匿名'"
@@ -164,7 +162,7 @@
         <button
           class="page-btn"
           :disabled="pageIndex >= totalPages"
-          @click="changePage(pageIndex + 1)"
+          @click="changePage(pageIndex + 1, true)"
         >
           下一页
         </button>
@@ -310,7 +308,7 @@ const processContent = (content) => {
   return processed;
 };
 
-const fetchTopicDetail = async () => {
+const fetchTopicDetail = async (append = false) => {
   try {
     const data = await getTopicDetail(tid.value, {
       PageIndex: pageIndex.value,
@@ -321,8 +319,17 @@ const fetchTopicDetail = async () => {
 
     if (data) {
       topic.value = data.topic || {};
-      replies.value = data.replay?.data || [];
-      users.value = data.user || {};
+
+      if (append) {
+        // 追加模式
+        const newReplies = data.replay?.data || [];
+        replies.value = [...replies.value, ...newReplies];
+      } else {
+        // 替换模式：直接替换
+        replies.value = data.replay?.data || [];
+      }
+
+      users.value = { ...users.value, ...(data.user || {}) };
       replyCount.value = data.replay?.totalCount || 0;
     }
   } catch (error) {
@@ -330,10 +337,17 @@ const fetchTopicDetail = async () => {
   }
 };
 
-const changePage = (page) => {
+const changePage = (page, isNextButton = false) => {
   pageIndex.value = page;
-  fetchTopicDetail();
-  window.scrollTo(0, 0);
+
+  if (isNextButton) {
+    // 只有点击下一页按钮时，追加内容
+    fetchTopicDetail(true);
+  } else {
+    // 其他所有操作（上一页、跳转页码等），替换内容
+    fetchTopicDetail(false);
+    window.scrollTo(0, 0);
+  }
 };
 
 const formatTime = (dateStr) => {
