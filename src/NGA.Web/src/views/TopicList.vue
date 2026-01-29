@@ -319,8 +319,8 @@ onMounted(() => {
 }
 
 .catalog-btn:hover {
-  border-color: #4A90E2;
-  color: #4A90E2;
+  border-color: #4a90e2;
+  color: #4a90e2;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(93, 173, 226, 0.2);
 }
