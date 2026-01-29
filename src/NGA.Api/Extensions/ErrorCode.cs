@@ -7,7 +7,7 @@ namespace NGA.Api.Extensions
         //unexpected  error 
         [Description("System error.")]
         SystemError = 1000,
-        [Description("The topic was not found.")]
+        [Description("找不到该主题.")]
         TopicNotFound = 1001,
         //client error
         [Description("Validation error.")]

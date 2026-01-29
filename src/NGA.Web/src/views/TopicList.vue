@@ -3,6 +3,13 @@
     <AppHeader />
 
     <main class="main-content">
+      <!-- 错误提示 -->
+      <div v-if="errorMessage" class="error-toast">
+        <span class="error-icon">⚠️</span>
+        <span class="error-text">{{ errorMessage }}</span>
+        <button class="error-close" @click="errorMessage = ''">×</button>
+      </div>
+
       <div class="search-bar">
         <span class="search-icon">🔍</span>
         <input
@@ -156,6 +163,7 @@ const pageSize = ref(10);
 const totalCount = ref(0);
 const searchKey = ref("");
 const catalog = ref("All"); // 默认为All
+const errorMessage = ref("");
 
 const totalPages = computed(() => {
   return Math.ceil(totalCount.value / pageSize.value);
@@ -176,6 +184,10 @@ const fetchTopics = async () => {
     }
   } catch (error) {
     console.error("Failed to fetch topics:", error);
+    errorMessage.value = error?.response?.data?.message || error?.message || "加载失败，请稍后重试";
+    setTimeout(() => {
+      errorMessage.value = "";
+    }, 5000);
   }
 };
 
@@ -256,6 +268,69 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
+}
+
+.error-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(255, 107, 107, 0.4);
+  z-index: 1000;
+  animation: slideDown 0.3s ease-out;
+  max-width: 90%;
+  word-break: break-word;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.error-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.error-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.error-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #ffffff;
+  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+
+.error-close:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .search-bar {
