@@ -56,28 +56,28 @@ namespace NGA.Api.Controllers
                 ).OrderBy(q => q.Sort).AsQueryable().ToPaged(query.PageIndex);
             var quoteReplays = await _replayService.GetListAsync(q => replays.Data.Select(q => q.QuotePid).Contains(q.Pid));
             var quoteReplayUsers = (await _userService.GetListAsync(q => quoteReplays.Select(q => q.Uid).Contains(q.Uid))).Distinct().ToDictionary(q => q.Uid, q => q);
-            foreach (var item in replays.Data)
-            {
-                var quoteHtml = "";
-                if (item.QuotePid != "-1" && quoteReplayUsers != null && quoteReplayUsers.Count > 0)
-                {
-                    var Quote = quoteReplays.Where(q => q.Pid == item.QuotePid).FirstOrDefault();
-                    if (Quote != null)
-                    {
-                        quoteReplayUsers.TryGetValue(Quote.Uid, out User? u);
-                        if (Quote != null)
-                        {
-                            quoteHtml = $"<div class=\"quote\"> by <a href= \"/nuke.php?func=ucp&amp;uid={Quote.Uid}\" " +
-                           $"class=\"b\">[{(u == null ? "匿名" : u.UserName)}]</a> <span class=\"xtxt silver\" style=\"font-weight:normal\">({Quote.PostDate})</span><br /> <br />" +
-                           $"{Quote.Content.Replace("{replay}", "")}</div>";
-                        }
-                    }
-                }
-                item.Content = item.Content.Replace("{replay}", quoteHtml);
-            }
+            //foreach (var item in replays.Data)
+            //{
+            //    var quoteHtml = "";
+            //    if (item.QuotePid != "-1" && quoteReplayUsers != null && quoteReplayUsers.Count > 0)
+            //    {
+            //        var Quote = quoteReplays.Where(q => q.Pid == item.QuotePid).FirstOrDefault();
+            //        if (Quote != null)
+            //        {
+            //            quoteReplayUsers.TryGetValue(Quote.Uid, out User? u);
+            //            if (Quote != null)
+            //            {
+            //                quoteHtml = $"<div class=\"quote\"> by <a href= \"/nuke.php?func=ucp&amp;uid={Quote.Uid}\" " +
+            //               $"class=\"b\">[{(u == null ? "匿名" : u.UserName)}]</a> <span class=\"xtxt silver\" style=\"font-weight:normal\">({Quote.PostDate})</span><br /> <br />" +
+            //               $"{Quote.Content.Replace("{replay}", "")}</div>";
+            //            }
+            //        }
+            //    }
+            //    item.Content = item.Content.Replace("{replay}", quoteHtml);
+            //}
             Dictionary<string, User> users = [];
             users = (await _userService.GetListAsync(q => replays.Data.Select(q => q.Uid).Contains(q.Uid))).Distinct().ToDictionary(q => q.Uid, q => q);
-            return Ok(new QueryTopicResponse() { Replay = replays, Topic = topic, User = users });
+            return Ok(new QueryTopicResponse() { Replay = replays, Topic = topic, User = users, QuoteReplay = quoteReplays.ToList(), QuoteUser = quoteReplayUsers });
         }
 
     }

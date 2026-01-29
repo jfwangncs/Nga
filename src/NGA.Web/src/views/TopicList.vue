@@ -184,7 +184,10 @@ const fetchTopics = async () => {
     }
   } catch (error) {
     console.error("Failed to fetch topics:", error);
-    errorMessage.value = error?.response?.data?.message || error?.message || "加载失败，请稍后重试";
+    errorMessage.value =
+      error?.response?.data?.message ||
+      error?.message ||
+      "加载失败，请稍后重试";
     setTimeout(() => {
       errorMessage.value = "";
     }, 5000);

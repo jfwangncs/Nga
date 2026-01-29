@@ -350,7 +350,10 @@ const fetchTopicDetail = async (append = false) => {
     }
   } catch (error) {
     console.error("Failed to fetch topic detail:", error);
-    errorMessage.value = error?.response?.data?.message || error?.message || "加载失败，请稍后重试";
+    errorMessage.value =
+      error?.response?.data?.message ||
+      error?.message ||
+      "加载失败，请稍后重试";
     setTimeout(() => {
       errorMessage.value = "";
     }, 5000);
