@@ -247,25 +247,9 @@ const filteredReplies = computed(() => {
   return replies.value.filter((r) => r.sort !== 0);
 });
 
-// 根据筛选条件显示回复
+// 直接显示过滤后的回复，筛选由后端处理
 const displayedReplies = computed(() => {
-  let result = filteredReplies.value;
-
-  // 只看楼主
-  if (onlyAuthor.value && topic.value) {
-    const authorUid = topic.value.uid;
-    result = result.filter((r) => r.uid === authorUid);
-  }
-
-  // 只看图片
-  if (onlyImage.value) {
-    result = result.filter((r) => {
-      const content = r.content || "";
-      return content.includes("<img") || content.includes("[img");
-    });
-  }
-
-  return result;
+  return filteredReplies.value;
 });
 
 const toggleOnlyAuthor = () => {
@@ -273,6 +257,10 @@ const toggleOnlyAuthor = () => {
   if (onlyAuthor.value) {
     onlyImage.value = false;
   }
+  // 重新加载数据
+  pageIndex.value = 1;
+  replies.value = [];
+  fetchTopicDetail();
 };
 
 const toggleOnlyImage = () => {
@@ -280,6 +268,10 @@ const toggleOnlyImage = () => {
   if (onlyImage.value) {
     onlyAuthor.value = false;
   }
+  // 重新加载数据
+  pageIndex.value = 1;
+  replies.value = [];
+  fetchTopicDetail();
 };
 
 // 获取用户头像
@@ -313,8 +305,8 @@ const fetchTopicDetail = async (append = false) => {
     const data = await getTopicDetail(tid.value, {
       PageIndex: pageIndex.value,
       PageSize: pageSize.value,
-      OnlyAuthor: false,
-      OnlyImage: false,
+      OnlyAuthor: onlyAuthor.value,
+      OnlyImage: onlyImage.value,
     });
 
     if (data) {
