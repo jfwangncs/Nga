@@ -18,11 +18,17 @@
             <h1 class="title">{{ topic.title }}</h1>
             <div class="meta-row">
               <div class="author-section">
-                <span class="author">{{
-                  topic.userName || topic.uid || "匿名用户"
-                }}</span>
-                <span class="divider">·</span>
-                <span class="time">{{ formatTime(topic.postDate) }}</span>
+                <UserAvatar
+                  :avatar="topic.avatar || getUserAvatar(topic.uid)"
+                  :username="topic.userName || topic.uid || '匿名用户'"
+                  size="medium"
+                />
+                <div class="author-info">
+                  <span class="author">{{  
+                    topic.userName || topic.uid || "匿名用户"
+                  }}</span>
+                  <span class="time">{{ formatTime(topic.postDate) }}</span>
+                </div>
               </div>
               <div class="stats-section">
                 <span class="stat-item">
@@ -83,9 +89,14 @@
               <div class="reply-number">
                 #{{ (pageIndex - 1) * pageSize + index + 1 }}
               </div>
+              <UserAvatar
+                :avatar="getUserAvatar(reply.uid)"
+                :username="reply.uName || reply.uid || '匿名'"
+                size="medium"
+              />
               <div class="reply-content-wrapper">
                 <div class="reply-header">
-                  <span class="author">{{
+                  <span class="author">{{  
                     reply.uName || reply.uid || "匿名"
                   }}</span>
                   <span class="time">{{ formatTime(reply.postDate) }}</span>
@@ -170,6 +181,7 @@ import { useRoute } from "vue-router";
 import { getTopicDetail } from "@/api/topic";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 
 const route = useRoute();
 const tid = ref(route.params.tid);
@@ -270,6 +282,13 @@ const toggleOnlyImage = () => {
   if (onlyImage.value) {
     onlyAuthor.value = false;
   }
+};
+
+// 获取用户头像
+const getUserAvatar = (uid) => {
+  if (!uid || !users.value) return "";
+  const user = users.value[uid];
+  return user?.avatar || "";
 };
 
 // 处理内容中的图片URL，解决跨域问题
@@ -409,16 +428,16 @@ onMounted(() => {
 /* 主题卡片 */
 .topic-card {
   background: #fff;
-  border-radius: 2px;
-  box-shadow:
-    0 1px 2px 0 rgba(0, 0, 0, 0.03),
-    0 1px 6px -1px rgba(0, 0, 0, 0.02),
-    0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .topic-header {
   padding: 24px 24px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 2px solid #f0f0f0;
+  background: linear-gradient(to bottom, #fafafa 0%, #ffffff 100%);
 }
 
 .title {
@@ -440,13 +459,20 @@ onMounted(() => {
 .author-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   font-size: 14px;
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .author {
   color: rgba(0, 0, 0, 0.85);
   font-weight: 500;
+  font-size: 15px;
 }
 
 .divider {
@@ -455,6 +481,7 @@ onMounted(() => {
 
 .time {
   color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
 }
 
 .stats-section {
@@ -516,19 +543,19 @@ onMounted(() => {
 /* 回复区域 */
 .replies-section {
   background: #fff;
-  border-radius: 2px;
-  box-shadow:
-    0 1px 2px 0 rgba(0, 0, 0, 0.03),
-    0 1px 6px -1px rgba(0, 0, 0, 0.02),
-    0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .section-header {
   padding: 16px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 2px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: linear-gradient(to bottom, #fafafa 0%, #ffffff 100%);
 }
 
 .section-header h3 {
@@ -544,25 +571,27 @@ onMounted(() => {
 }
 
 .filter-btn {
-  padding: 4px 12px;
+  padding: 6px 16px;
   font-size: 13px;
   color: rgba(0, 0, 0, 0.65);
   background: #fff;
   border: 1px solid #d9d9d9;
-  border-radius: 2px;
+  border-radius: 16px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .filter-btn:hover {
-  color: #1890ff;
-  border-color: #1890ff;
+  color: #4A90E2;
+  border-color: #4A90E2;
+  background: rgba(93, 173, 226, 0.05);
 }
 
 .filter-btn.active {
   color: #fff;
-  background: #1890ff;
-  border-color: #1890ff;
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(93, 173, 226, 0.3);
 }
 
 .reply-list {
@@ -571,18 +600,39 @@ onMounted(() => {
 
 .reply-item {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   padding: 16px 24px;
   border-bottom: 1px solid #f0f0f0;
-  transition: background-color 0.3s;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.reply-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.reply-item:hover {
+  background-color: rgba(93, 173, 226, 0.03);
+}
+
+.reply-item:hover::before {
+  opacity: 1;
 }
 
 .reply-item.reply-even {
-  background-color: #f1f8e9;
+  background-color: #ffffff;
 }
 
 .reply-item.reply-odd {
-  background-color: #e3f2fd;
+  background-color: #fafafa;
 }
 
 .reply-item:last-child {
@@ -595,14 +645,16 @@ onMounted(() => {
 
 .reply-number {
   flex-shrink: 0;
-  width: 36px;
-  height: 22px;
-  line-height: 22px;
+  width: 40px;
+  height: 24px;
+  line-height: 24px;
   text-align: center;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
-  background: #fafafa;
-  border-radius: 2px;
+  font-weight: 600;
+  color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
 }
 
 .reply-content-wrapper {
@@ -612,19 +664,19 @@ onMounted(() => {
 
 .reply-header {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 8px;
 }
 
 .reply-header .author {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: rgba(0, 0, 0, 0.85);
 }
 
 .reply-header .time {
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
 }
 
@@ -709,26 +761,28 @@ onMounted(() => {
 .page-btn,
 .page-num {
   min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
+  height: 36px;
+  padding: 0 12px;
   font-size: 14px;
   color: rgba(0, 0, 0, 0.85);
   background: #fff;
   border: 1px solid #d9d9d9;
-  border-radius: 2px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  line-height: 30px;
+  line-height: 34px;
 }
 
 .page-btn {
-  padding: 0 15px;
+  padding: 0 16px;
 }
 
 .page-btn:hover:not(:disabled),
 .page-num:hover {
-  color: #1890ff;
-  border-color: #1890ff;
+  color: #4A90E2;
+  border-color: #4A90E2;
+  background: rgba(93, 173, 226, 0.05);
+  transform: translateY(-2px);
 }
 
 .page-btn:disabled {
@@ -736,12 +790,15 @@ onMounted(() => {
   background: #f5f5f5;
   border-color: #d9d9d9;
   cursor: not-allowed;
+  transform: none;
 }
 
 .page-num.active {
-  color: #1890ff;
-  border-color: #1890ff;
-  font-weight: 500;
+  color: #ffffff;
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(93, 173, 226, 0.3);
 }
 
 .ellipsis {

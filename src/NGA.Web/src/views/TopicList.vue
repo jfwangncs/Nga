@@ -22,6 +22,11 @@
         >
           <div class="topic-header">
             <div class="topic-left">
+              <UserAvatar
+                :avatar="topic.avatar"
+                :username="topic.userName || topic.uid || '用户'"
+                size="medium"
+              />
               <div class="topic-info">
                 <div class="topic-author">
                   {{ topic.userName || topic.uid || "用户" }}
@@ -83,6 +88,7 @@ import { useRouter } from "vue-router";
 import { getTopicList } from "@/api/topic";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
+import UserAvatar from "@/components/UserAvatar.vue";
 
 const pageNumbers = computed(() => {
   const total = totalPages.value;
@@ -223,26 +229,35 @@ onMounted(() => {
 
 .search-bar {
   width: 100%;
-  height: 48px;
+  height: 56px;
   background: #ffffff;
-  border-radius: 8px;
-  padding: 12px 16px;
+  border-radius: 28px;
+  padding: 12px 24px;
   display: flex;
   align-items: center;
   gap: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 2px solid transparent;
+  transition: all 0.3s;
+}
+
+.search-bar:focus-within {
+  border-color: #4A90E2;
+  box-shadow: 0 4px 20px rgba(93, 173, 226, 0.2);
 }
 
 .search-icon {
-  font-size: 16px;
-  color: #666666;
+  font-size: 18px;
+  color: #4A90E2;
 }
 
 .search-bar input {
   flex: 1;
   border: none;
   outline: none;
-  font-size: 14px;
+  font-size: 15px;
   color: #333333;
+  background: transparent;
 }
 
 .search-bar input::placeholder {
@@ -264,19 +279,37 @@ onMounted(() => {
 }
 
 .topic-card {
-  background: #ffffff;
-  border-radius: 8px;
+  background: linear-gradient(to bottom, #ffffff 0%, #fafafa 100%);
+  border-radius: 12px;
   padding: 20px;
   cursor: pointer;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.topic-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .topic-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(93, 173, 226, 0.2);
+  border-color: rgba(93, 173, 226, 0.3);
+}
+
+.topic-card:hover::before {
+  opacity: 1;
 }
 
 .topic-header {
@@ -289,14 +322,7 @@ onMounted(() => {
 .topic-left {
   display: flex;
   gap: 12px;
-  align-items: center;
-}
-
-.topic-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #ffe0b2;
+  align-items: flex-start;
 }
 
 .topic-info {
@@ -328,19 +354,32 @@ onMounted(() => {
   font-weight: 600;
   color: #1a1a1a;
   margin-bottom: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topic-card:hover .topic-title {
+  color: #4A90E2;
 }
 
 .topic-tags {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .tag {
-  padding: 4px 8px;
-  background: #e3f2fd;
-  color: #2196f3;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, rgba(93, 173, 226, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%);
+  color: #4A90E2;
   font-size: 12px;
-  border-radius: 4px;
+  border-radius: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(93, 173, 226, 0.2);
 }
 
 .pagination-ellipsis {
@@ -367,19 +406,25 @@ onMounted(() => {
   height: 36px;
   padding: 0 16px;
   background: #ffffff;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   color: #666666;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  border: 1px solid #e0e0e0;
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background: #f5f5f5;
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+  color: #ffffff;
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(93, 173, 226, 0.3);
 }
 
 .pagination-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #f5f5f5;
 }
 
 .pagination-num {
@@ -387,9 +432,17 @@ onMounted(() => {
   padding: 0;
 }
 
+.pagination-num:hover {
+  background: linear-gradient(135deg, rgba(93, 173, 226, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%);
+  color: #4A90E2;
+  border-color: #4A90E2;
+}
+
 .pagination-num.active {
-  background: #2196f3;
+  background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
   color: #ffffff;
   font-weight: 600;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(93, 173, 226, 0.3);
 }
 </style>
