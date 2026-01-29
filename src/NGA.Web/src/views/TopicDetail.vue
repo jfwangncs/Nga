@@ -106,6 +106,31 @@
                   }}</span>
                   <span class="time">{{ formatTime(reply.postDate) }}</span>
                 </div>
+
+                <!-- 引用回复 -->
+                <div
+                  v-if="reply.quotePid && getQuoteReply(reply.quotePid)"
+                  class="quote-box"
+                >
+                  <div class="quote-header">
+                    <span class="quote-icon">↳</span>
+                    <UserAvatar
+                      :avatar="getQuoteUser(getQuoteReply(reply.quotePid)?.uid)?.avatar || ''"
+                      :username="getQuoteUser(getQuoteReply(reply.quotePid)?.uid)?.userName || '用户'"
+                      size="small"
+                    />
+                    <span class="quote-author">{{
+                      getQuoteUser(getQuoteReply(reply.quotePid)?.uid)?.userName ||
+                      getQuoteReply(reply.quotePid)?.uName ||
+                      "用户"
+                    }}</span>
+                    <span class="quote-floor">#{{ getQuoteReply(reply.quotePid)?.sort }}</span>
+                  </div>
+                  <div class="quote-content">
+                    {{ truncateContent(getQuoteReply(reply.quotePid)?.content) }}
+                  </div>
+                </div>
+
                 <div
                   class="reply-body"
                   v-html="processContent(reply.content)"
@@ -194,6 +219,8 @@ const tid = ref(route.params.tid);
 const topic = ref(null);
 const replies = ref([]);
 const users = ref({});
+const quoteReplies = ref({});
+const quoteUsers = ref({});
 const pageIndex = ref(1);
 const pageSize = ref(20);
 const replyCount = ref(0);
@@ -291,6 +318,29 @@ const getUserAvatar = (uid) => {
   return user?.avatar || "";
 };
 
+// 获取引用回复信息
+const getQuoteReply = (quotePid) => {
+  if (!quotePid) return null;
+  // 在 quoteReplies 中查找 pid 匹配的回复
+  const replies = Object.values(quoteReplies.value);
+  return replies.find(reply => reply.pid === quotePid) || null;
+};
+
+// 获取引用用户信息
+const getQuoteUser = (uid) => {
+  if (!uid) return null;
+  return quoteUsers.value[uid] || users.value[uid] || null;
+};
+
+// 截取引用内容（显示前100个字符）
+const truncateContent = (content, maxLength = 100) => {
+  if (!content) return "无内容";
+  // 移除HTML标签
+  const text = content.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
+};
+
 // 处理内容中的图片URL，解决跨域问题
 const processContent = (content) => {
   if (!content) return "";
@@ -346,6 +396,8 @@ const fetchTopicDetail = async (append = false) => {
       }
 
       users.value = { ...users.value, ...(data.user || {}) };
+      quoteReplies.value = { ...quoteReplies.value, ...(data.quoteReplay || {}) };
+      quoteUsers.value = { ...quoteUsers.value, ...(data.quoteUser || {}) };
       replyCount.value = data.replay?.totalCount || 0;
     }
   } catch (error) {
@@ -782,6 +834,56 @@ onMounted(() => {
 .reply-header .time {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+.quote-box {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(93, 173, 226, 0.05) 0%, rgba(52, 152, 219, 0.05) 100%);
+  border-left: 3px solid #4A90E2;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+.quote-box:hover {
+  background: linear-gradient(135deg, rgba(93, 173, 226, 0.08) 0%, rgba(52, 152, 219, 0.08) 100%);
+  border-left-color: #5dade2;
+}
+
+.quote-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.quote-icon {
+  font-size: 18px;
+  color: #4A90E2;
+  font-weight: bold;
+}
+
+.quote-author {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4A90E2;
+}
+
+.quote-floor {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  padding: 2px 8px;
+  background: rgba(74, 144, 226, 0.1);
+  border-radius: 10px;
+}
+
+.quote-content {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 1.6;
+  padding-left: 26px;
+  font-style: italic;
+  word-break: break-word;
 }
 
 .reply-body {
