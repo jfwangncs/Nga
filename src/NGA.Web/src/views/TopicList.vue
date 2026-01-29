@@ -242,13 +242,13 @@ onMounted(() => {
 }
 
 .search-bar:focus-within {
-  border-color: #4A90E2;
+  border-color: #4a90e2;
   box-shadow: 0 4px 20px rgba(93, 173, 226, 0.2);
 }
 
 .search-icon {
   font-size: 18px;
-  color: #4A90E2;
+  color: #4a90e2;
 }
 
 .search-bar input {
@@ -363,7 +363,7 @@ onMounted(() => {
 }
 
 .topic-card:hover .topic-title {
-  color: #4A90E2;
+  color: #4a90e2;
 }
 
 .topic-tags {
@@ -374,8 +374,12 @@ onMounted(() => {
 
 .tag {
   padding: 4px 12px;
-  background: linear-gradient(135deg, rgba(93, 173, 226, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%);
-  color: #4A90E2;
+  background: linear-gradient(
+    135deg,
+    rgba(93, 173, 226, 0.1) 0%,
+    rgba(52, 152, 219, 0.1) 100%
+  );
+  color: #4a90e2;
   font-size: 12px;
   border-radius: 12px;
   font-weight: 500;
@@ -433,9 +437,13 @@ onMounted(() => {
 }
 
 .pagination-num:hover {
-  background: linear-gradient(135deg, rgba(93, 173, 226, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%);
-  color: #4A90E2;
-  border-color: #4A90E2;
+  background: linear-gradient(
+    135deg,
+    rgba(93, 173, 226, 0.1) 0%,
+    rgba(52, 152, 219, 0.1) 100%
+  );
+  color: #4a90e2;
+  border-color: #4a90e2;
 }
 
 .pagination-num.active {

@@ -13,11 +13,7 @@
         </nav>
       </div>
       <div class="header-right">
-        <UserAvatar
-          avatar=""
-          username="访客"
-          size="small"
-        />
+        <UserAvatar avatar="" username="访客" size="small" />
         <span class="user-name">访客</span>
       </div>
     </div>

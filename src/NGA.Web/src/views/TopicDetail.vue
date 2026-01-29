@@ -24,7 +24,7 @@
                   size="medium"
                 />
                 <div class="author-info">
-                  <span class="author">{{  
+                  <span class="author">{{
                     topic.userName || topic.uid || "匿名用户"
                   }}</span>
                   <span class="time">{{ formatTime(topic.postDate) }}</span>
@@ -96,7 +96,7 @@
               />
               <div class="reply-content-wrapper">
                 <div class="reply-header">
-                  <span class="author">{{  
+                  <span class="author">{{
                     reply.uName || reply.uid || "匿名"
                   }}</span>
                   <span class="time">{{ formatTime(reply.postDate) }}</span>
@@ -582,8 +582,8 @@ onMounted(() => {
 }
 
 .filter-btn:hover {
-  color: #4A90E2;
-  border-color: #4A90E2;
+  color: #4a90e2;
+  border-color: #4a90e2;
   background: rgba(93, 173, 226, 0.05);
 }
 
@@ -652,7 +652,11 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 600;
   color: #667eea;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(118, 75, 162, 0.1) 100%
+  );
   border-radius: 12px;
   border: 1px solid rgba(102, 126, 234, 0.2);
 }
@@ -779,8 +783,8 @@ onMounted(() => {
 
 .page-btn:hover:not(:disabled),
 .page-num:hover {
-  color: #4A90E2;
-  border-color: #4A90E2;
+  color: #4a90e2;
+  border-color: #4a90e2;
   background: rgba(93, 173, 226, 0.05);
   transform: translateY(-2px);
 }

@@ -1,6 +1,6 @@
 :root {
-  --color-primary: #4A90E2;
-  --color-primary-dark: #357ABD;
+  --color-primary: #4a90e2;
+  --color-primary-dark: #357abd;
   --color-bg: #f5f7fa;
   --color-card: #ffffff;
   --color-text-primary: #1a1a1a;
@@ -18,7 +18,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   line-height: 1.6;
