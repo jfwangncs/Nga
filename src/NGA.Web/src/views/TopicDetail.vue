@@ -257,9 +257,10 @@ const toggleOnlyAuthor = () => {
   if (onlyAuthor.value) {
     onlyImage.value = false;
   }
-  // 重新加载数据
+  // 重新加载数据，保留主题内容
+  const mainContent = replies.value.find((r) => r.sort === 0);
   pageIndex.value = 1;
-  replies.value = [];
+  replies.value = mainContent ? [mainContent] : [];
   fetchTopicDetail();
 };
 
@@ -268,9 +269,10 @@ const toggleOnlyImage = () => {
   if (onlyImage.value) {
     onlyAuthor.value = false;
   }
-  // 重新加载数据
+  // 重新加载数据，保留主题内容
+  const mainContent = replies.value.find((r) => r.sort === 0);
   pageIndex.value = 1;
-  replies.value = [];
+  replies.value = mainContent ? [mainContent] : [];
   fetchTopicDetail();
 };
 
