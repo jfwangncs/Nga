@@ -65,7 +65,7 @@
         </div>
 
         <!-- 回复列表 -->
-        <div v-if="filteredReplies.length > 0" class="replies-section">
+        <div v-if="topic" class="replies-section">
           <div class="section-header">
             <h3>回复 ({{ replyCount }})</h3>
             <div class="filter-buttons">
@@ -86,7 +86,7 @@
             </div>
           </div>
 
-          <div class="reply-list">
+          <div v-if="filteredReplies.length > 0" class="reply-list">
             <div
               v-for="(reply, index) in displayedReplies"
               :key="reply.id"
@@ -165,6 +165,13 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- 空状态提示 -->
+          <div v-else class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-text">暂无符合条件的回复</div>
+            <div class="empty-hint">试试调整筛选条件</div>
           </div>
         </div>
       </div>
@@ -953,6 +960,30 @@ onMounted(() => {
 .action-btn .icon {
   width: 14px;
   height: 14px;
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 60px 24px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 /* 分页 */
