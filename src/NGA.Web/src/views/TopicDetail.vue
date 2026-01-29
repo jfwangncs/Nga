@@ -322,16 +322,21 @@ const fetchTopicDetail = async (append = false) => {
 
       if (append) {
         // 追加模式：将新回复添加到已有回复后面，过滤掉 sort=0 的主题内容
-        const newReplies = (data.replay?.data || []).filter(r => r.sort !== 0);
+        const newReplies = (data.replay?.data || []).filter(
+          (r) => r.sort !== 0,
+        );
         replies.value = [...replies.value, ...newReplies];
       } else {
         // 替换模式：保留 sort=0 的主题内容，替换其他回复
-        const mainContent = replies.value.find(r => r.sort === 0);
+        const mainContent = replies.value.find((r) => r.sort === 0);
         const newReplies = data.replay?.data || [];
-        
-        if (mainContent && !newReplies.some(r => r.sort === 0)) {
+
+        if (mainContent && !newReplies.some((r) => r.sort === 0)) {
           // 如果已有主题内容但新数据中没有，保留主题内容
-          replies.value = [mainContent, ...newReplies.filter(r => r.sort !== 0)];
+          replies.value = [
+            mainContent,
+            ...newReplies.filter((r) => r.sort !== 0),
+          ];
         } else {
           // 否则直接替换
           replies.value = newReplies;
