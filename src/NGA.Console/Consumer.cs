@@ -614,7 +614,7 @@ namespace NGA.Console
                 //var rehtml = $"<div class=\"quote\"> by <a href= \"/nuke.php?func=ucp&amp;uid={id}\" " +
                 //$"class=\"b\">[{name}]</a> <span class=\"xtxt silver\" style=\"font-weight:normal\">({time})</span>" +
                 //$"{context}</div>";
-                _context = _context.Replace(m.Value, "{replay}");
+                _context = _context.Replace(m.Value, "");
             }
             //引用回复处理
             MatchCollection quotergmc = QuoteRegex.Matches(_context);
@@ -630,7 +630,7 @@ namespace NGA.Console
                 //var rehtml = $"<div class=\"quote\"> by <a href= \"/nuke.php?func=ucp&amp;uid={id}\" " +
                 //    $"class=\"b\">[{name}]</a> <span class=\"xtxt silver\" style=\"font-weight:normal\">({time})</span>" +
                 //    $"{context}</div>";
-                _context = _context.Replace(m.Value, "{replay}");
+                _context = _context.Replace(m.Value, "");
             }
             floor.QuotePid = quotepid;
             floor.Content = _context;
