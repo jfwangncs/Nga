@@ -163,13 +163,14 @@ npm run dev
 Predefined tasks in `.vscode/tasks.json`:
 
 - `build-console`: Build NGA.Console project
-- `build-api`: Build NGA.Api project  
+- `build-api`: Build NGA.Api project
 - `watch-console`: Hot-reload for console development
 - `watch-api`: Hot-reload for API development
 - `build-and-launch-api`: Build + open Scalar UI at `http://localhost:5000/scalar/`
 - `start-vue-dev`: Start Vue dev server (NGA.Web) at `http://localhost:3000`
 
 **Quick Start:**
+
 ```bash
 # Terminal 1: Run API with hot reload
 dotnet watch run --project src/NGA.Api/NGA.Api.csproj
@@ -178,7 +179,7 @@ dotnet watch run --project src/NGA.Api/NGA.Api.csproj
 cd src/NGA.Console
 $env:OTEL_SERVICE_NAME="NGA.Console.Producer"; dotnet run
 
-# Terminal 3: Run Consumer  
+# Terminal 3: Run Consumer
 $env:OTEL_SERVICE_NAME="NGA.Console.Consumer"; $env:ConsumerType="New"; dotnet run
 
 # Terminal 4: Run Vue frontend
