@@ -21,8 +21,11 @@ using NGA.Models;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.ComponentModel;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace NGA.Api.Extensions
@@ -180,6 +183,39 @@ namespace NGA.Api.Extensions
             services.AddEndpointsApiExplorer();
             services.AddOpenApi(options =>
             {
+                options.AddSchemaTransformer((schema, context, cancellationToken) =>
+                {
+                    var type = context.JsonTypeInfo.Type;
+                    var enumType = Nullable.GetUnderlyingType(type) ?? type;
+                    if (enumType.IsEnum)
+                    {
+                        // 保持整数类型
+                        schema.Type = JsonSchemaType.Integer;
+
+                        // 添加所有可能的值到 Enum 数组
+                        schema.Enum = Enum.GetValues(enumType)
+                            .Cast<int>()
+                            .Select(v => (JsonNode)v)
+                            .ToList();
+
+                        // 获取枚举的描述信息
+                        var descriptions = new List<string>();
+                        foreach (var value in Enum.GetValues(enumType))
+                        {
+                            var intValue = Convert.ToInt32(value);
+                            var name = Enum.GetName(enumType, value);
+                            var description = GetEnumDescription(enumType, name!);
+
+                            if (!string.IsNullOrEmpty(description))
+                                descriptions.Add($"{intValue} = {name} ({description})");
+                            else
+                                descriptions.Add($"{intValue} = {name}");
+                        }
+
+                        schema.Description = string.Join(", ", descriptions);
+                    }
+                    return Task.CompletedTask;
+                });
                 options.AddDocumentTransformer((document, context, cancellationToken) =>
                 {
                     document.Components ??= new();
@@ -200,6 +236,19 @@ namespace NGA.Api.Extensions
                 });
             });
             return services;
+            static string GetEnumDescription(Type enumType, string enumName)
+            {
+                var memberInfo = enumType.GetMember(enumName).FirstOrDefault();
+                if (memberInfo != null)
+                {
+                    var descriptionAttribute = memberInfo.GetCustomAttribute<DescriptionAttribute>();
+                    if (descriptionAttribute != null)
+                    {
+                        return descriptionAttribute.Description;
+                    }
+                }
+                return string.Empty;
+            }
         }
 
         public static IServiceCollection AddCustomOpenTelemetry(this IServiceCollection services)
