@@ -8,7 +8,8 @@ This is a .NET web scraping system for the NGA Chinese forum (bbs.nga.cn) with a
 
 - **NGA.Console**: Producer scrapes topics, Consumer processes replies with AI analysis
 - **NGA.Models**: EF Core entities (Topic, Replay, User, Black) with MySQL backend
-- **NGA.UI**: Web API for health checks and management (v2 controllers, FluentValidation)
+- **NGA.Api**: Web API for data access and management (uses FluentValidation, Scalar OpenAPI UI)
+- **NGA.Web**: Vue 3 + Vite frontend for topic browsing and display
 
 ## Critical Development Knowledge
 
@@ -114,10 +115,12 @@ Connection strings in `appsettings.json` use custom `JfYuDbContext` configuratio
 
 **Docker Multi-Stage Build:**
 
-- Targets .NET 10.0 (check Dockerfile for base image updates)
-- Includes diagnostic tools: dotnet-dump, dotnet-trace, dotnet-gcdump
-- GitHub Actions builds on `src/NGA.Console/**` or `src/NGA.Models/**` changes
-- Tagged as `jfwangncs/ngb:${{ github.run_number }}`
+- Console: Targets .NET 10.0, includes diagnostic tools (dotnet-dump/trace/gcdump)
+- API: Same base image, exposes port 5000
+- Web: Node 23 build + Nginx runtime, exposes port 80
+- GitHub Actions triggers:
+  - `api-ci.yml`: Builds on `src/NGA.Api/**` or `src/NGA.Models/**` changes → `jfwangncs/ngb-api:${run_number}`
+  - `web-ci.yml`: Builds on `src/NGA.Web/**` changes → `jfwangncs/ngb-web:${run_number}`
 
 **Local Development:**
 
@@ -135,15 +138,64 @@ dotnet run
 $env:OTEL_SERVICE_NAME="NGA.Console.Consumer"
 $env:ConsumerType="New"
 dotnet run
+
+# Run API (separate terminal)
+cd src/NGA.Api
+dotnet watch run  # Auto-opens Scalar UI in dev mode
+
+# Run Vue frontend (separate terminal)
+cd src/NGA.Web
+npm install  # First time only
+npm run dev
 ```
 
-### API Design Patterns (NGA.UI)
+### API Design Patterns (NGA.Api)
 
-- **API Versioning:** Uses Asp.Versioning with v1/v2 controllers (see `Controllers/V2/`)
-- **Response Format:** All endpoints return `BaseResponse<T>` with `Code`, `Message`, `Data`
-- **Validation:** FluentValidation with custom validators in `Validations/`
+- **API Versioning:** Uses Asp.Versioning (currently v1 only in Controllers/)
+- **Response Format:** All endpoints return `BaseResponse<T>` with `Code`, `Message`, `ErrorCode`, `Data`
+- **Validation:** FluentValidation with custom validators in `Validations/` (e.g., `LoginRequestValidation`)
 - **Error Handling:** Global exception handler in `ServicesExtension.UseCustomExceptionHandler()`
 - **OpenAPI:** Uses Scalar UI (`app.MapScalarApiReference()`) instead of Swagger
+- **CORS:** AllowAll policy configured for cross-origin access
+
+### VS Code Tasks
+
+Predefined tasks in `.vscode/tasks.json`:
+
+- `build-console`: Build NGA.Console project
+- `build-api`: Build NGA.Api project  
+- `watch-console`: Hot-reload for console development
+- `watch-api`: Hot-reload for API development
+- `build-and-launch-api`: Build + open Scalar UI at `http://localhost:5000/scalar/`
+- `start-vue-dev`: Start Vue dev server (NGA.Web) at `http://localhost:3000`
+
+**Quick Start:**
+```bash
+# Terminal 1: Run API with hot reload
+dotnet watch run --project src/NGA.Api/NGA.Api.csproj
+
+# Terminal 2: Run Producer
+cd src/NGA.Console
+$env:OTEL_SERVICE_NAME="NGA.Console.Producer"; dotnet run
+
+# Terminal 3: Run Consumer  
+$env:OTEL_SERVICE_NAME="NGA.Console.Consumer"; $env:ConsumerType="New"; dotnet run
+
+# Terminal 4: Run Vue frontend
+cd src/NGA.Web
+npm run dev
+```
+
+### Frontend Architecture (NGA.Web)
+
+- **Stack:** Vue 3.4 + Vue Router 4 + Axios + Vite 5
+- **API Base:** Dev: `http://127.0.0.1:5000`, Prod: `https://ngb.xiaofengyu.com`
+- **Structure:**
+  - `src/api/`: Axios API clients
+  - `src/components/`: Reusable Vue components
+  - `src/views/`: Page components (TopicList, TopicDetail)
+  - `src/router/`: Vue Router configuration
+- **Deployment:** Docker with Nginx (see `nginx.conf`)
 
 ### Configuration Hierarchy
 
