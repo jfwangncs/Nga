@@ -48,19 +48,17 @@ namespace NGA.Console
         {
             var fids = JsonConvert.DeserializeObject<List<string>>(Environment.GetEnvironmentVariable("FID") ?? "");
             fids ??= new List<string>() { "-7", "472" };
-
-            // 启动时加载黑名单，避免每次循环都查询数据库
-            using (var initScope = _scopeFactory.CreateScope())
-            {
-                var _blackService = initScope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
-                _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
-                _blackKeywords = _blackList.SelectMany(b => b.Title.Split(',', StringSplitOptions.RemoveEmptyEntries)).ToList();
-            }
             _token = await _redisService.GetAsync<NGBToken>("Token");
 
             int startPage = 1;
             do
             {
+                using (var initScope = _scopeFactory.CreateScope())
+                {
+                    var _blackService = initScope.ServiceProvider.GetRequiredService<IService<Black, DataContext>>();
+                    _blackList = [.. await _blackService.GetListAsync(q => q.Status == 1)];
+                    _blackKeywords = _blackList.SelectMany(b => b.Title.Split(',', StringSplitOptions.RemoveEmptyEntries)).ToList();
+                }
                 using var activity = _activitySource.StartActivity("producer.run", ActivityKind.Internal);
                 foreach (var fid in fids)
                 {
