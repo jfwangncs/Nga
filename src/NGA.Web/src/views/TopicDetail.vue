@@ -11,9 +11,9 @@
       </div>
 
       <div class="breadcrumb">
-        <router-link to="/">首页</router-link>
+        <router-link :to="getListUrl()">首页</router-link>
         <span class="separator">/</span>
-        <router-link to="/">话题列表</router-link>
+        <router-link :to="getListUrl()">话题列表</router-link>
         <span class="separator">/</span>
         <span class="current">详情</span>
       </div>
@@ -224,14 +224,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import { useRoute } from "vue-router";
+import { ref, onMounted, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { getTopicDetail } from "@/api/topic";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
 
 const route = useRoute();
+const router = useRouter();
 const tid = ref(route.params.tid);
 
 const topic = ref(null);
@@ -239,11 +240,11 @@ const replies = ref([]);
 const users = ref({});
 const quoteReplies = ref({});
 const quoteUsers = ref({});
-const pageIndex = ref(1);
+const pageIndex = ref(Number(route.query.page) || 1);
 const pageSize = ref(20);
 const replyCount = ref(0);
-const onlyAuthor = ref(false);
-const onlyImage = ref(false);
+const onlyAuthor = ref(route.query.onlyAuthor === 'true');
+const onlyImage = ref(route.query.onlyImage === 'true');
 const errorMessage = ref("");
 
 const totalPages = computed(() => {
@@ -305,28 +306,48 @@ const displayedReplies = computed(() => {
   return filteredReplies.value;
 });
 
-const toggleOnlyAuthor = () => {
-  onlyAuthor.value = !onlyAuthor.value;
-  if (onlyAuthor.value) {
-    onlyImage.value = false;
+// 生成返回列表页的URL，恢复之前的状态
+const getListUrl = () => {
+  const query = {};
+  if (route.query.returnPage) {
+    query.page = route.query.returnPage;
   }
-  // 重新加载数据，保留主题内容
+  if (route.query.returnSearchKey) {
+    query.searchKey = route.query.returnSearchKey;
+  }
+  if (route.query.returnCatalog) {
+    query.catalog = route.query.returnCatalog;
+  }
+  return {
+    path: '/',
+    query
+  };
+};
+
+const toggleOnlyAuthor = () => {
   const mainContent = replies.value.find((r) => r.sort === 0);
-  pageIndex.value = 1;
   replies.value = mainContent ? [mainContent] : [];
-  fetchTopicDetail();
+  router.push({
+    path: `/topic/${tid.value}`,
+    query: {
+      page: 1,
+      onlyAuthor: !onlyAuthor.value,
+      onlyImage: false
+    }
+  });
 };
 
 const toggleOnlyImage = () => {
-  onlyImage.value = !onlyImage.value;
-  if (onlyImage.value) {
-    onlyAuthor.value = false;
-  }
-  // 重新加载数据，保留主题内容
   const mainContent = replies.value.find((r) => r.sort === 0);
-  pageIndex.value = 1;
   replies.value = mainContent ? [mainContent] : [];
-  fetchTopicDetail();
+  router.push({
+    path: `/topic/${tid.value}`,
+    query: {
+      page: 1,
+      onlyAuthor: false,
+      onlyImage: !onlyImage.value
+    }
+  });
 };
 
 // 获取用户头像
@@ -394,33 +415,21 @@ const fetchTopicDetail = async (append = false) => {
       topic.value = data.topic || {};
 
       if (append) {
-        // 追加模式：将新回复添加到已有回复后面，过滤掉 sort=0 的主题内容
-        const newReplies = (data.replay?.data || []).filter(
-          (r) => r.sort !== 0,
-        );
+        const newReplies = (data.replay?.data || []).filter((r) => r.sort !== 0);
         replies.value = [...replies.value, ...newReplies];
       } else {
-        // 替换模式：保留 sort=0 的主题内容，替换其他回复
         const mainContent = replies.value.find((r) => r.sort === 0);
         const newReplies = data.replay?.data || [];
 
         if (mainContent && !newReplies.some((r) => r.sort === 0)) {
-          // 如果已有主题内容但新数据中没有，保留主题内容
-          replies.value = [
-            mainContent,
-            ...newReplies.filter((r) => r.sort !== 0),
-          ];
+          replies.value = [mainContent, ...newReplies.filter((r) => r.sort !== 0)];
         } else {
-          // 否则直接替换
           replies.value = newReplies;
         }
       }
 
       users.value = { ...users.value, ...(data.user || {}) };
-      quoteReplies.value = {
-        ...quoteReplies.value,
-        ...(data.quoteReplay || {}),
-      };
+      quoteReplies.value = { ...quoteReplies.value, ...(data.quoteReplay || {}) };
       quoteUsers.value = { ...quoteUsers.value, ...(data.quoteUser || {}) };
       replyCount.value = data.replay?.totalCount || 0;
     }
@@ -436,15 +445,27 @@ const fetchTopicDetail = async (append = false) => {
   }
 };
 
-const changePage = (page, isNextButton = false) => {
-  pageIndex.value = page;
+// 监听路由变化，自动同步参数和刷新
+watch(
+  () => [route.query.page, route.query.onlyAuthor, route.query.onlyImage],
+  ([newPage, newOnlyAuthor, newOnlyImage]) => {
+    pageIndex.value = Number(newPage) || 1;
+    onlyAuthor.value = newOnlyAuthor === 'true';
+    onlyImage.value = newOnlyImage === 'true';
+    fetchTopicDetail();
+  }
+);
 
-  if (isNextButton) {
-    // 只有点击下一页按钮时，追加内容
-    fetchTopicDetail(true);
-  } else {
-    // 其他所有操作（上一页、跳转页码等），替换内容
-    fetchTopicDetail(false);
+const changePage = (page, isNextButton = false) => {
+  router.push({
+    path: `/topic/${tid.value}`,
+    query: {
+      page,
+      onlyAuthor: onlyAuthor.value,
+      onlyImage: onlyImage.value
+    }
+  });
+  if (!isNextButton) {
     window.scrollTo(0, 0);
   }
 };

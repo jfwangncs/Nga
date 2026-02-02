@@ -109,8 +109,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, computed, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { getTopicList } from "@/api/topic";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
@@ -156,13 +156,14 @@ const pageNumbers = computed(() => {
 });
 
 const router = useRouter();
+const route = useRoute();
 
 const topics = ref([]);
-const pageIndex = ref(1);
+const pageIndex = ref(Number(route.query.page) || 1);
 const pageSize = ref(10);
 const totalCount = ref(0);
-const searchKey = ref("");
-const catalog = ref("All"); // 默认为All
+const searchKey = ref(route.query.searchKey || "");
+const catalog = ref(route.query.catalog || "All");
 const errorMessage = ref("");
 
 const totalPages = computed(() => {
@@ -194,29 +195,65 @@ const fetchTopics = async () => {
   }
 };
 
+// 监听路由变化，自动同步参数和刷新
+watch(
+  () => route.query,
+  (newQuery) => {
+    pageIndex.value = Number(newQuery.page) || 1;
+    searchKey.value = newQuery.searchKey || "";
+    catalog.value = newQuery.catalog || "All";
+    fetchTopics();
+  }
+);
+
 const handleSearch = () => {
-  pageIndex.value = 1;
-  fetchTopics();
+  router.push({
+    path: '/',
+    query: {
+      ...route.query,
+      page: 1,
+      searchKey: searchKey.value,
+      catalog: catalog.value
+    }
+  });
 };
 
 const selectCatalog = (selectedCatalog) => {
-  if (catalog.value === selectedCatalog) {
-    catalog.value = "All"; // 再次点击取消筛选
-  } else {
-    catalog.value = selectedCatalog;
-  }
-  pageIndex.value = 1;
-  fetchTopics();
+  const newCatalog = catalog.value === selectedCatalog ? "All" : selectedCatalog;
+  router.push({
+    path: '/',
+    query: {
+      ...route.query,
+      page: 1,
+      searchKey: searchKey.value,
+      catalog: newCatalog
+    }
+  });
 };
 
 const changePage = (page) => {
-  pageIndex.value = page;
-  fetchTopics();
+  router.push({
+    path: '/',
+    query: {
+      ...route.query,
+      page,
+      searchKey: searchKey.value,
+      catalog: catalog.value
+    }
+  });
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 const goToDetail = (tid) => {
-  router.push(`/topic/${tid}`);
+  router.push({
+    path: `/topic/${tid}`,
+    query: {
+      page: 1,
+      returnPage: pageIndex.value,
+      returnSearchKey: searchKey.value,
+      returnCatalog: catalog.value
+    }
+  });
 };
 
 const formatTime = (dateStr) => {
