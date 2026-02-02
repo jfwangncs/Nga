@@ -78,7 +78,12 @@ namespace NGA.Console
                 _logger.LogWarning("已在运行中，跳过启动");
                 return;
             }
-
+            var now = DateTime.Now;
+            if (now.Hour == 5 && now.Minute >= 55 && now.Minute < 59 && _isRunning)
+            {
+                _logger.LogWarning("维护中，跳过启动");
+                return;
+            }
             _logger.LogInformation("启动 Consumer, ServiceName: {ServiceName}, ConsumerCount: {Count}", Program.ServiceName, _consoleOptions.ConsumerCount);
 
             try
@@ -269,7 +274,7 @@ namespace NGA.Console
             }
 
             async Task<Tuple<int, bool>> MainAsync(Topic topic, int page, IService<User, DataContext> _userService, IService<Replay, DataContext> _replayService, int taskId)
-            { 
+            {
                 HtmlDocument htmlDocument = new HtmlDocument();
                 _ngaClient.Url = $"https://bbs.nga.cn/read.php?tid={topic.Tid}&page={page}";
                 _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
@@ -414,8 +419,8 @@ namespace NGA.Console
                             user = new User();
                         var html = "";
                         try
-                        { 
-                            _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={userinfo.Uid}"; 
+                        {
+                            _ngaClient.Url = $"https://bbs.nga.cn/nuke.php?__lib=ucp&__act=get&lite=js&uid={userinfo.Uid}";
                             html = await _ngaClient.SendAsync();
                             user.Uid = userinfo.Uid.ToString();
                             if (string.IsNullOrEmpty(html))
@@ -523,7 +528,7 @@ namespace NGA.Console
                 }
             }
         }
-       
+
 
 
         //获取楼层数据
