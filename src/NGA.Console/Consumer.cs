@@ -280,12 +280,7 @@ namespace NGA.Console
                 _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
                 var html = await _ngaClient.SendAsync();
 
-                if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
-                {
-                    _logger.LogInformation($"{taskId}-{topic.Title}被隐藏.{html}");
-                    return new Tuple<int, bool>(-1, true);
-                }
-                if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
+                if (html.Contains("访客不能直接访问") || html.Contains("ERROR:<!--msgcodestart-->1<!--msgcodeend-->"))
                 {
                     _logger.LogWarning("用户登录:{html}", html);
                     using var scope = _scopeFactory.CreateScope();
@@ -293,6 +288,13 @@ namespace NGA.Console
                     await _loginHelper.LoginAsync();
                     return new Tuple<int, bool>(-1, true);
                 }
+
+                if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
+                {
+                    _logger.LogInformation($"{taskId}-{topic.Title}被隐藏.{html}");
+                    return new Tuple<int, bool>(-1, true);
+                }
+
                 if (_ngaClient.StatusCode != HttpStatusCode.OK)
                 {
                     _logger.LogWarning("{TaskId}-{Tid}-{Title}-{Html}状态不正确,", taskId, topic.Tid, topic.Title, html);
