@@ -280,10 +280,9 @@ namespace NGA.Console
                 _ngaClient.RequestEncoding = Encoding.GetEncoding("GB18030");
                 var html = await _ngaClient.SendAsync();
 
-
                 if (string.IsNullOrEmpty(html) || html.Contains("帖子发布或回复时间超过限制") || html.Contains("302 Found") || html.Contains("帖子被设为隐藏") || html.Contains("查看所需的权限/条件"))
                 {
-                    _logger.LogInformation($"{taskId}-{topic.Title}被隐藏.{html}", html);
+                    _logger.LogInformation($"{taskId}-{topic.Title}被隐藏.{html}");
                     return new Tuple<int, bool>(-1, true);
                 }
                 if (html.Contains("访客不能直接访问") || html.Contains("未登录"))
