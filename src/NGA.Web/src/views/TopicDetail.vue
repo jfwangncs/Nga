@@ -243,10 +243,10 @@ const quoteUsers = ref({});
 const pageIndex = ref(Number(route.query.page) || 1);
 const pageSize = ref(20);
 const replyCount = ref(0);
-const onlyAuthor = ref(route.query.onlyAuthor === 'true');
-const onlyImage = ref(route.query.onlyImage === 'true');
+const onlyAuthor = ref(route.query.onlyAuthor === "true");
+const onlyImage = ref(route.query.onlyImage === "true");
 const errorMessage = ref("");
-const shouldAppend = ref(false);  // 追踪是否应该追加加载
+const shouldAppend = ref(false); // 追踪是否应该追加加载
 
 const totalPages = computed(() => {
   return Math.ceil(replyCount.value / pageSize.value);
@@ -320,8 +320,8 @@ const getListUrl = () => {
     query.catalog = route.query.returnCatalog;
   }
   return {
-    path: '/',
-    query
+    path: "/",
+    query,
   };
 };
 
@@ -334,8 +334,8 @@ const toggleOnlyAuthor = () => {
     query: {
       page: 1,
       onlyAuthor: !onlyAuthor.value,
-      onlyImage: false
-    }
+      onlyImage: false,
+    },
   });
 };
 
@@ -348,8 +348,8 @@ const toggleOnlyImage = () => {
     query: {
       page: 1,
       onlyAuthor: false,
-      onlyImage: !onlyImage.value
-    }
+      onlyImage: !onlyImage.value,
+    },
   });
 };
 
@@ -418,21 +418,29 @@ const fetchTopicDetail = async (append = false) => {
       topic.value = data.topic || {};
 
       if (append) {
-        const newReplies = (data.replay?.data || []).filter((r) => r.sort !== 0);
+        const newReplies = (data.replay?.data || []).filter(
+          (r) => r.sort !== 0,
+        );
         replies.value = [...replies.value, ...newReplies];
       } else {
         const mainContent = replies.value.find((r) => r.sort === 0);
         const newReplies = data.replay?.data || [];
 
         if (mainContent && !newReplies.some((r) => r.sort === 0)) {
-          replies.value = [mainContent, ...newReplies.filter((r) => r.sort !== 0)];
+          replies.value = [
+            mainContent,
+            ...newReplies.filter((r) => r.sort !== 0),
+          ];
         } else {
           replies.value = newReplies;
         }
       }
 
       users.value = { ...users.value, ...(data.user || {}) };
-      quoteReplies.value = { ...quoteReplies.value, ...(data.quoteReplay || {}) };
+      quoteReplies.value = {
+        ...quoteReplies.value,
+        ...(data.quoteReplay || {}),
+      };
       quoteUsers.value = { ...quoteUsers.value, ...(data.quoteUser || {}) };
       replyCount.value = data.replay?.totalCount || 0;
     }
@@ -451,11 +459,15 @@ const fetchTopicDetail = async (append = false) => {
 // 监听路由变化，自动同步参数和刷新
 watch(
   () => [route.query.page, route.query.onlyAuthor, route.query.onlyImage],
-  ([newPage, newOnlyAuthor, newOnlyImage], [oldPage, oldOnlyAuthor, oldOnlyImage]) => {
+  (
+    [newPage, newOnlyAuthor, newOnlyImage],
+    [oldPage, oldOnlyAuthor, oldOnlyImage],
+  ) => {
     const newPageNum = Number(newPage) || 1;
 
     // 检测筛选条件是否改变
-    const filterChanged = newOnlyAuthor !== oldOnlyAuthor || newOnlyImage !== oldOnlyImage;
+    const filterChanged =
+      newOnlyAuthor !== oldOnlyAuthor || newOnlyImage !== oldOnlyImage;
 
     if (filterChanged) {
       // 筛选条件改变时，清空列表并重置
@@ -465,8 +477,8 @@ watch(
     }
 
     pageIndex.value = newPageNum;
-    onlyAuthor.value = newOnlyAuthor === 'true';
-    onlyImage.value = newOnlyImage === 'true';
+    onlyAuthor.value = newOnlyAuthor === "true";
+    onlyImage.value = newOnlyImage === "true";
 
     // 使用 shouldAppend 标志决定加载模式
     fetchTopicDetail(shouldAppend.value);
@@ -475,13 +487,13 @@ watch(
     if (shouldAppend.value) {
       shouldAppend.value = false;
     }
-  }
+  },
 );
 
 const changePage = (page, isNextButton = false) => {
   // 判断是否向后翻页（页码变大）
   if (page > pageIndex.value) {
-    shouldAppend.value = true;  // 向后翻页使用追加模式
+    shouldAppend.value = true; // 向后翻页使用追加模式
   } else {
     shouldAppend.value = false; // 向前翻页替换列表
   }
@@ -491,8 +503,8 @@ const changePage = (page, isNextButton = false) => {
     query: {
       page,
       onlyAuthor: onlyAuthor.value,
-      onlyImage: onlyImage.value
-    }
+      onlyImage: onlyImage.value,
+    },
   });
 
   if (!isNextButton) {
