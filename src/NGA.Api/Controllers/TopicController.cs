@@ -82,20 +82,5 @@ namespace NGA.Api.Controllers
             return Ok(new QueryTopicResponse() { Replay = replays, Topic = topic, User = users, QuoteReplay = quoteReplays.ToList(), QuoteUser = quoteReplayUsers });
         }
 
-        [HttpGet("/test")]
-        [ProducesResponseType(typeof(BaseResponse<PagedData<TopicResponse>>), 200)]
-        public async Task<IActionResult> Test([FromQuery] QueryRequest query)
-        {
-            try
-            {
-                throw new Exception("测试");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "测试异常日志");
-
-            }
-            return Ok();
-        }
     }
 }

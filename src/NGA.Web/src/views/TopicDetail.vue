@@ -246,6 +246,7 @@ const replyCount = ref(0);
 const onlyAuthor = ref(route.query.onlyAuthor === 'true');
 const onlyImage = ref(route.query.onlyImage === 'true');
 const errorMessage = ref("");
+const shouldAppend = ref(false);  // 追踪是否应该追加加载
 
 const totalPages = computed(() => {
   return Math.ceil(replyCount.value / pageSize.value);
@@ -327,6 +328,7 @@ const getListUrl = () => {
 const toggleOnlyAuthor = () => {
   const mainContent = replies.value.find((r) => r.sort === 0);
   replies.value = mainContent ? [mainContent] : [];
+  shouldAppend.value = false;
   router.push({
     path: `/topic/${tid.value}`,
     query: {
@@ -340,6 +342,7 @@ const toggleOnlyAuthor = () => {
 const toggleOnlyImage = () => {
   const mainContent = replies.value.find((r) => r.sort === 0);
   replies.value = mainContent ? [mainContent] : [];
+  shouldAppend.value = false;
   router.push({
     path: `/topic/${tid.value}`,
     query: {
@@ -448,15 +451,41 @@ const fetchTopicDetail = async (append = false) => {
 // 监听路由变化，自动同步参数和刷新
 watch(
   () => [route.query.page, route.query.onlyAuthor, route.query.onlyImage],
-  ([newPage, newOnlyAuthor, newOnlyImage]) => {
-    pageIndex.value = Number(newPage) || 1;
+  ([newPage, newOnlyAuthor, newOnlyImage], [oldPage, oldOnlyAuthor, oldOnlyImage]) => {
+    const newPageNum = Number(newPage) || 1;
+
+    // 检测筛选条件是否改变
+    const filterChanged = newOnlyAuthor !== oldOnlyAuthor || newOnlyImage !== oldOnlyImage;
+
+    if (filterChanged) {
+      // 筛选条件改变时，清空列表并重置
+      const mainContent = replies.value.find((r) => r.sort === 0);
+      replies.value = mainContent ? [mainContent] : [];
+      shouldAppend.value = false;
+    }
+
+    pageIndex.value = newPageNum;
     onlyAuthor.value = newOnlyAuthor === 'true';
     onlyImage.value = newOnlyImage === 'true';
-    fetchTopicDetail();
+
+    // 使用 shouldAppend 标志决定加载模式
+    fetchTopicDetail(shouldAppend.value);
+
+    // 重置标志
+    if (shouldAppend.value) {
+      shouldAppend.value = false;
+    }
   }
 );
 
 const changePage = (page, isNextButton = false) => {
+  // 判断是否向后翻页（页码变大）
+  if (page > pageIndex.value) {
+    shouldAppend.value = true;  // 向后翻页使用追加模式
+  } else {
+    shouldAppend.value = false; // 向前翻页替换列表
+  }
+
   router.push({
     path: `/topic/${tid.value}`,
     query: {
@@ -465,6 +494,7 @@ const changePage = (page, isNextButton = false) => {
       onlyImage: onlyImage.value
     }
   });
+
   if (!isNextButton) {
     window.scrollTo(0, 0);
   }
