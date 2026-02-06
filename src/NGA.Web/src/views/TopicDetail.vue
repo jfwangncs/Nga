@@ -491,11 +491,11 @@ watch(
 );
 
 const changePage = (page, isNextButton = false) => {
-  // 判断是否向后翻页（页码变大）
-  if (page > pageIndex.value) {
-    shouldAppend.value = true; // 向后翻页使用追加模式
+  // 判断是否是连续的下一页（无论是点击按钮还是点击页码）
+  if (page === pageIndex.value + 1) {
+    shouldAppend.value = true; // 连续下一页追加模式
   } else {
-    shouldAppend.value = false; // 向前翻页替换列表
+    shouldAppend.value = false; // 其他情况（上一页、跨页跳转）都刷新
   }
 
   router.push({
