@@ -507,7 +507,8 @@ const changePage = (page, isNextButton = false) => {
     },
   });
 
-  if (!isNextButton) {
+  // 只有非追加模式（刷新）才滚动到顶部
+  if (!shouldAppend.value) {
     window.scrollTo(0, 0);
   }
 };
