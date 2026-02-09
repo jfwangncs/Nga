@@ -2,107 +2,109 @@
   <div class="topic-list-page">
     <AppHeader />
 
-    <main class="main-content">
-      <!-- 错误提示 -->
-      <div v-if="errorMessage" class="error-toast">
-        <span class="error-icon">⚠️</span>
-        <span class="error-text">{{ errorMessage }}</span>
-        <button class="error-close" @click="errorMessage = ''">×</button>
-      </div>
+    <PullRefresh :onRefresh="handleRefresh">
+      <main class="main-content">
+        <!-- 错误提示 -->
+        <div v-if="errorMessage" class="error-toast">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text">{{ errorMessage }}</span>
+          <button class="error-close" @click="errorMessage = ''">×</button>
+        </div>
 
-      <div class="search-bar">
-        <span class="search-icon">🔍</span>
-        <input
-          v-model="searchKey"
-          type="text"
-          placeholder="搜索..."
-          @keyup.enter="handleSearch"
-        />
-      </div>
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input
+            v-model="searchKey"
+            type="text"
+            placeholder="搜索..."
+            @keyup.enter="handleSearch"
+          />
+        </div>
 
-      <div class="catalog-filters">
-        <button
-          class="catalog-btn"
-          :class="{ active: catalog === 'DaXuanWo' }"
-          @click="selectCatalog('DaXuanWo')"
-        >
-          <span class="catalog-icon">🌀</span>
-          <span>大漩涡</span>
-        </button>
-        <button
-          class="catalog-btn"
-          :class="{ active: catalog === 'Cosplay' }"
-          @click="selectCatalog('Cosplay')"
-        >
-          <span class="catalog-icon">🎭</span>
-          <span>Cosplay</span>
-        </button>
-      </div>
+        <div class="catalog-filters">
+          <button
+            class="catalog-btn"
+            :class="{ active: catalog === 'DaXuanWo' }"
+            @click="selectCatalog('DaXuanWo')"
+          >
+            <span class="catalog-icon">🌀</span>
+            <span>大漩涡</span>
+          </button>
+          <button
+            class="catalog-btn"
+            :class="{ active: catalog === 'Cosplay' }"
+            @click="selectCatalog('Cosplay')"
+          >
+            <span class="catalog-icon">🎭</span>
+            <span>Cosplay</span>
+          </button>
+        </div>
 
-      <div class="topic-list">
-        <div
-          v-for="topic in topics"
-          :key="topic.id"
-          class="topic-card"
-          @click="goToDetail(topic.tid)"
-        >
-          <div class="topic-header">
-            <div class="topic-left">
-              <UserAvatar
-                :avatar="topic.avatar"
-                :username="topic.userName || topic.uid || '用户'"
-                size="medium"
-              />
-              <div class="topic-info">
-                <div class="topic-author">
-                  {{ topic.userName || topic.uid || "用户" }}
+        <div class="topic-list">
+          <div
+            v-for="topic in topics"
+            :key="topic.id"
+            class="topic-card"
+            @click="goToDetail(topic.tid)"
+          >
+            <div class="topic-header">
+              <div class="topic-left">
+                <UserAvatar
+                  :avatar="topic.avatar"
+                  :username="topic.userName || topic.uid || '用户'"
+                  size="medium"
+                />
+                <div class="topic-info">
+                  <div class="topic-author">
+                    {{ topic.userName || topic.uid || "用户" }}
+                  </div>
+                  <div class="topic-time">{{ formatTime(topic.postDate) }}</div>
                 </div>
-                <div class="topic-time">{{ formatTime(topic.postDate) }}</div>
+              </div>
+              <div class="topic-stats">
+                <span>{{ topic.replies || 0 }}条回复</span>
               </div>
             </div>
-            <div class="topic-stats">
-              <span>{{ topic.replies || 0 }}条回复</span>
+
+            <h3 class="topic-title">{{ topic.title }}</h3>
+
+            <div class="topic-tags" v-if="topic.fid">
+              <span class="tag">{{ topic.fid }}</span>
             </div>
           </div>
-
-          <h3 class="topic-title">{{ topic.title }}</h3>
-
-          <div class="topic-tags" v-if="topic.fid">
-            <span class="tag">{{ topic.fid }}</span>
-          </div>
         </div>
-      </div>
 
-      <div class="pagination">
-        <button
-          class="pagination-btn"
-          :disabled="pageIndex <= 1"
-          @click="changePage(pageIndex - 1)"
-        >
-          上一页
-        </button>
-
-        <template v-for="page in pageNumbers" :key="page">
+        <div class="pagination">
           <button
-            v-if="page !== '...'"
-            class="pagination-num"
-            :class="{ active: pageIndex === page }"
-            @click="changePage(page)"
+            class="pagination-btn"
+            :disabled="pageIndex <= 1"
+            @click="changePage(pageIndex - 1)"
           >
-            {{ page }}
+            上一页
           </button>
-          <span v-else class="pagination-ellipsis">...</span>
-        </template>
 
-        <button
-          class="pagination-btn"
-          :disabled="pageIndex >= totalPages"
-          @click="changePage(pageIndex + 1)"
-        >
-          下一页
-        </button>
-      </div>
-    </main>
+          <template v-for="page in pageNumbers" :key="page">
+            <button
+              v-if="page !== '...'"
+              class="pagination-num"
+              :class="{ active: pageIndex === page }"
+              @click="changePage(page)"
+            >
+              {{ page }}
+            </button>
+            <span v-else class="pagination-ellipsis">...</span>
+          </template>
+
+          <button
+            class="pagination-btn"
+            :disabled="pageIndex >= totalPages"
+            @click="changePage(pageIndex + 1)"
+          >
+            下一页
+          </button>
+        </div>
+      </main>
+    </PullRefresh>
 
     <AppFooter />
   </div>
@@ -115,6 +117,7 @@ import { getTopicList } from "@/api/topic";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
+import PullRefresh from "@/components/PullRefresh.vue";
 
 const pageNumbers = computed(() => {
   const total = totalPages.value;
@@ -203,43 +206,44 @@ watch(
     searchKey.value = newQuery.searchKey || "";
     catalog.value = newQuery.catalog || "All";
     fetchTopics();
-  }
+  },
 );
 
 const handleSearch = () => {
   router.push({
-    path: '/',
+    path: "/",
     query: {
       ...route.query,
       page: 1,
       searchKey: searchKey.value,
-      catalog: catalog.value
-    }
+      catalog: catalog.value,
+    },
   });
 };
 
 const selectCatalog = (selectedCatalog) => {
-  const newCatalog = catalog.value === selectedCatalog ? "All" : selectedCatalog;
+  const newCatalog =
+    catalog.value === selectedCatalog ? "All" : selectedCatalog;
   router.push({
-    path: '/',
+    path: "/",
     query: {
       ...route.query,
       page: 1,
       searchKey: searchKey.value,
-      catalog: newCatalog
-    }
+      catalog: newCatalog,
+    },
   });
 };
 
 const changePage = (page) => {
   router.push({
-    path: '/',
+    path: "/",
     query: {
       ...route.query,
       page,
       searchKey: searchKey.value,
-      catalog: catalog.value
-    }
+      catalog: catalog.value,
+    },
   });
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
@@ -251,8 +255,8 @@ const goToDetail = (tid) => {
       page: 1,
       returnPage: pageIndex.value,
       returnSearchKey: searchKey.value,
-      returnCatalog: catalog.value
-    }
+      returnCatalog: catalog.value,
+    },
   });
 };
 
@@ -284,6 +288,11 @@ const formatViews = (views) => {
     return (num / 1000).toFixed(1) + "K";
   }
   return num.toString();
+};
+
+// 下拉刷新处理
+const handleRefresh = async () => {
+  await fetchTopics();
 };
 
 onMounted(() => {

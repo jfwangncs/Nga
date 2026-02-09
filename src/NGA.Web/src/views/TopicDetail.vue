@@ -2,222 +2,224 @@
   <div class="topic-detail-page">
     <AppHeader />
 
-    <main class="main-content">
-      <!-- 错误提示 -->
-      <div v-if="errorMessage" class="error-toast">
-        <span class="error-icon">⚠️</span>
-        <span class="error-text">{{ errorMessage }}</span>
-        <button class="error-close" @click="errorMessage = ''">×</button>
-      </div>
+    <PullRefresh :onRefresh="handleRefresh">
+      <main class="main-content">
+        <!-- 错误提示 -->
+        <div v-if="errorMessage" class="error-toast">
+          <span class="error-icon">⚠️</span>
+          <span class="error-text">{{ errorMessage }}</span>
+          <button class="error-close" @click="errorMessage = ''">×</button>
+        </div>
 
-      <div class="breadcrumb">
-        <router-link :to="getListUrl()">首页</router-link>
-        <span class="separator">/</span>
-        <router-link :to="getListUrl()">话题列表</router-link>
-        <span class="separator">/</span>
-        <span class="current">详情</span>
-      </div>
+        <div class="breadcrumb">
+          <router-link :to="getListUrl()">首页</router-link>
+          <span class="separator">/</span>
+          <router-link :to="getListUrl()">话题列表</router-link>
+          <span class="separator">/</span>
+          <span class="current">详情</span>
+        </div>
 
-      <div v-if="topic" class="detail-wrapper">
-        <!-- 主题卡片 -->
-        <div class="topic-card">
-          <div class="topic-header">
-            <h1 class="title">{{ topic.title }}</h1>
-            <div class="meta-row">
-              <div class="author-section">
+        <div v-if="topic" class="detail-wrapper">
+          <!-- 主题卡片 -->
+          <div class="topic-card">
+            <div class="topic-header">
+              <h1 class="title">{{ topic.title }}</h1>
+              <div class="meta-row">
+                <div class="author-section">
+                  <UserAvatar
+                    :avatar="topic.avatar || getUserAvatar(topic.uid)"
+                    :username="topic.userName || topic.uid || '匿名用户'"
+                    size="medium"
+                  />
+                  <div class="author-info">
+                    <span class="author">{{
+                      topic.userName || topic.uid || "匿名用户"
+                    }}</span>
+                    <span class="time">{{ formatTime(topic.postDate) }}</span>
+                  </div>
+                </div>
+                <div class="stats-section">
+                  <span class="stat-item">
+                    <svg
+                      class="icon"
+                      viewBox="0 0 1024 1024"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64z m0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"
+                        fill="currentColor"
+                      />
+                      <path
+                        d="M464 336a48 48 0 1 0 96 0 48 48 0 1 0-96 0z m72 112h-48c-4.4 0-8 3.6-8 8v272c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V456c0-4.4-3.6-8-8-8z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    {{ replyCount }} 回复
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="topic-body">
+              <div class="content" v-html="processContent(mainContent)"></div>
+            </div>
+          </div>
+
+          <!-- 回复列表 -->
+          <div v-if="topic" class="replies-section">
+            <div class="section-header">
+              <h3>回复 ({{ replyCount }})</h3>
+              <div class="filter-buttons">
+                <button
+                  class="filter-btn"
+                  :class="{ active: onlyAuthor }"
+                  @click="toggleOnlyAuthor"
+                >
+                  只看楼主
+                </button>
+                <button
+                  class="filter-btn"
+                  :class="{ active: onlyImage }"
+                  @click="toggleOnlyImage"
+                >
+                  只看图片
+                </button>
+              </div>
+            </div>
+
+            <div v-if="filteredReplies.length > 0" class="reply-list">
+              <div
+                v-for="(reply, index) in displayedReplies"
+                :key="reply.id"
+                class="reply-item"
+                :class="index % 2 === 0 ? 'reply-even' : 'reply-odd'"
+              >
+                <div class="reply-number">#{{ reply.sort }}</div>
                 <UserAvatar
-                  :avatar="topic.avatar || getUserAvatar(topic.uid)"
-                  :username="topic.userName || topic.uid || '匿名用户'"
+                  :avatar="getUserAvatar(reply.uid)"
+                  :username="reply.uName || reply.uid || '匿名'"
                   size="medium"
                 />
-                <div class="author-info">
-                  <span class="author">{{
-                    topic.userName || topic.uid || "匿名用户"
-                  }}</span>
-                  <span class="time">{{ formatTime(topic.postDate) }}</span>
-                </div>
-              </div>
-              <div class="stats-section">
-                <span class="stat-item">
-                  <svg
-                    class="icon"
-                    viewBox="0 0 1024 1024"
-                    width="16"
-                    height="16"
-                  >
-                    <path
-                      d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64z m0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M464 336a48 48 0 1 0 96 0 48 48 0 1 0-96 0z m72 112h-48c-4.4 0-8 3.6-8 8v272c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V456c0-4.4-3.6-8-8-8z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  {{ replyCount }} 回复
-                </span>
-              </div>
-            </div>
-          </div>
-          <div class="topic-body">
-            <div class="content" v-html="processContent(mainContent)"></div>
-          </div>
-        </div>
-
-        <!-- 回复列表 -->
-        <div v-if="topic" class="replies-section">
-          <div class="section-header">
-            <h3>回复 ({{ replyCount }})</h3>
-            <div class="filter-buttons">
-              <button
-                class="filter-btn"
-                :class="{ active: onlyAuthor }"
-                @click="toggleOnlyAuthor"
-              >
-                只看楼主
-              </button>
-              <button
-                class="filter-btn"
-                :class="{ active: onlyImage }"
-                @click="toggleOnlyImage"
-              >
-                只看图片
-              </button>
-            </div>
-          </div>
-
-          <div v-if="filteredReplies.length > 0" class="reply-list">
-            <div
-              v-for="(reply, index) in displayedReplies"
-              :key="reply.id"
-              class="reply-item"
-              :class="index % 2 === 0 ? 'reply-even' : 'reply-odd'"
-            >
-              <div class="reply-number">#{{ reply.sort }}</div>
-              <UserAvatar
-                :avatar="getUserAvatar(reply.uid)"
-                :username="reply.uName || reply.uid || '匿名'"
-                size="medium"
-              />
-              <div class="reply-content-wrapper">
-                <div class="reply-header">
-                  <span class="author">{{
-                    reply.uName || reply.uid || "匿名"
-                  }}</span>
-                  <span class="time">{{ formatTime(reply.postDate) }}</span>
-                </div>
-
-                <!-- 引用回复 -->
-                <div
-                  v-if="reply.quotePid && getQuoteReply(reply.quotePid)"
-                  class="quote-box"
-                >
-                  <div class="quote-header">
-                    <span class="quote-icon">↳</span>
-                    <UserAvatar
-                      :avatar="
-                        getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
-                          ?.avatar || ''
-                      "
-                      :username="
-                        getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
-                          ?.userName || '用户'
-                      "
-                      size="small"
-                    />
-                    <span class="quote-author">{{
-                      getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
-                        ?.userName ||
-                      getQuoteReply(reply.quotePid)?.uName ||
-                      "用户"
+                <div class="reply-content-wrapper">
+                  <div class="reply-header">
+                    <span class="author">{{
+                      reply.uName || reply.uid || "匿名"
                     }}</span>
-                    <span class="quote-floor"
-                      >#{{ getQuoteReply(reply.quotePid)?.sort }}</span
-                    >
+                    <span class="time">{{ formatTime(reply.postDate) }}</span>
                   </div>
-                  <div class="quote-content">
-                    {{
-                      truncateContent(getQuoteReply(reply.quotePid)?.content)
-                    }}
-                  </div>
-                </div>
 
-                <div
-                  class="reply-body"
-                  v-html="processContent(reply.content)"
-                ></div>
-                <div class="reply-footer">
-                  <span class="vote-item like">
-                    <svg
-                      viewBox="0 0 1024 1024"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                    >
-                      <path
-                        d="M885.9 533.7c16.8-22.2 26.1-49.4 26.1-77.7 0-44.9-25.1-87.4-65.5-111.1a67.67 67.67 0 0 0-34.3-9.3H572.4l6-122.9c1.4-29.7-9.1-57.9-29.5-79.4A106.62 106.62 0 0 0 471 99.9c-52 0-98 35-111.8 85.1l-85.9 311H144c-17.7 0-32 14.3-32 32v364c0 17.7 14.3 32 32 32h601.3c9.2 0 18.2-1.8 26.5-5.4 47.6-20.3 78.3-66.8 78.3-118.4 0-12.6-1.8-25-5.4-37 16.8-22.2 26.1-49.4 26.1-77.7 0-12.6-1.8-25-5.4-37 16.8-22.2 26.1-49.4 26.1-77.7-.2-12.6-2-25.1-5.6-37.1zM184 852V568h81v284h-81z m636.4-353l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 16.5-7.2 32.2-19.6 43l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 16.5-7.2 32.2-19.6 43l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 22.4-13.2 42.6-33.6 51.8H329V564.8l99.5-360.5a44.1 44.1 0 0 1 42.2-32.3c7.6 0 15.1 2.2 21.1 6.7 9.9 7.4 15.2 18.6 14.6 30.5l-9.6 198.4h314.4C829 418.5 840 436.9 840 456c0 16.5-7.2 32.1-19.6 43z"
+                  <!-- 引用回复 -->
+                  <div
+                    v-if="reply.quotePid && getQuoteReply(reply.quotePid)"
+                    class="quote-box"
+                  >
+                    <div class="quote-header">
+                      <span class="quote-icon">↳</span>
+                      <UserAvatar
+                        :avatar="
+                          getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
+                            ?.avatar || ''
+                        "
+                        :username="
+                          getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
+                            ?.userName || '用户'
+                        "
+                        size="small"
                       />
-                    </svg>
-                    {{ reply.support || 0 }}
-                  </span>
-                  <span class="vote-item dislike">
-                    <svg
-                      viewBox="0 0 1024 1024"
-                      width="16"
-                      height="16"
-                      fill="currentColor"
-                    >
-                      <path
-                        d="M885.9 490.3c3.6-12 5.4-24.4 5.4-37 0-28.3-9.3-55.5-26.1-77.7 3.6-12 5.4-24.4 5.4-37 0-28.3-9.3-55.5-26.1-77.7 3.6-12 5.4-24.4 5.4-37 0-51.6-30.7-98.1-78.3-118.4a66.1 66.1 0 0 0-26.5-5.4H144c-17.7 0-32 14.3-32 32v364c0 17.7 14.3 32 32 32h129.3l85.8 310.8C372.9 889 418.9 924 470.9 924c29.7 0 57.4-11.8 77.9-33.4 20.5-21.5 31-49.7 29.5-79.4l-6-122.9h239.9c12.1 0 23.9-3.2 34.3-9.3 40.4-23.5 65.5-66.1 65.5-111 0-28.3-9.3-55.5-26.1-77.7zM184 456V172h81v284h-81z m627.2 160.4H496.8l9.6 198.4c.6 11.9-4.7 23.1-14.6 30.5-6.1 4.5-13.6 6.8-21.1 6.7a44.28 44.28 0 0 1-42.2-32.3L329 459.2V172h415.4a56.85 56.85 0 0 1 33.6 51.8c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 19.1-11 37.5-28.8 48.4z"
-                      />
-                    </svg>
-                    {{ reply.oppose || 0 }}
-                  </span>
+                      <span class="quote-author">{{
+                        getQuoteUser(getQuoteReply(reply.quotePid)?.uid)
+                          ?.userName ||
+                        getQuoteReply(reply.quotePid)?.uName ||
+                        "用户"
+                      }}</span>
+                      <span class="quote-floor"
+                        >#{{ getQuoteReply(reply.quotePid)?.sort }}</span
+                      >
+                    </div>
+                    <div class="quote-content">
+                      {{
+                        truncateContent(getQuoteReply(reply.quotePid)?.content)
+                      }}
+                    </div>
+                  </div>
+
+                  <div
+                    class="reply-body"
+                    v-html="processContent(reply.content)"
+                  ></div>
+                  <div class="reply-footer">
+                    <span class="vote-item like">
+                      <svg
+                        viewBox="0 0 1024 1024"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M885.9 533.7c16.8-22.2 26.1-49.4 26.1-77.7 0-44.9-25.1-87.4-65.5-111.1a67.67 67.67 0 0 0-34.3-9.3H572.4l6-122.9c1.4-29.7-9.1-57.9-29.5-79.4A106.62 106.62 0 0 0 471 99.9c-52 0-98 35-111.8 85.1l-85.9 311H144c-17.7 0-32 14.3-32 32v364c0 17.7 14.3 32 32 32h601.3c9.2 0 18.2-1.8 26.5-5.4 47.6-20.3 78.3-66.8 78.3-118.4 0-12.6-1.8-25-5.4-37 16.8-22.2 26.1-49.4 26.1-77.7 0-12.6-1.8-25-5.4-37 16.8-22.2 26.1-49.4 26.1-77.7-.2-12.6-2-25.1-5.6-37.1zM184 852V568h81v284h-81z m636.4-353l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 16.5-7.2 32.2-19.6 43l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 16.5-7.2 32.2-19.6 43l-21.9 19 13.9 25.4a56.2 56.2 0 0 1 6.9 27.3c0 22.4-13.2 42.6-33.6 51.8H329V564.8l99.5-360.5a44.1 44.1 0 0 1 42.2-32.3c7.6 0 15.1 2.2 21.1 6.7 9.9 7.4 15.2 18.6 14.6 30.5l-9.6 198.4h314.4C829 418.5 840 436.9 840 456c0 16.5-7.2 32.1-19.6 43z"
+                        />
+                      </svg>
+                      {{ reply.support || 0 }}
+                    </span>
+                    <span class="vote-item dislike">
+                      <svg
+                        viewBox="0 0 1024 1024"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M885.9 490.3c3.6-12 5.4-24.4 5.4-37 0-28.3-9.3-55.5-26.1-77.7 3.6-12 5.4-24.4 5.4-37 0-28.3-9.3-55.5-26.1-77.7 3.6-12 5.4-24.4 5.4-37 0-51.6-30.7-98.1-78.3-118.4a66.1 66.1 0 0 0-26.5-5.4H144c-17.7 0-32 14.3-32 32v364c0 17.7 14.3 32 32 32h129.3l85.8 310.8C372.9 889 418.9 924 470.9 924c29.7 0 57.4-11.8 77.9-33.4 20.5-21.5 31-49.7 29.5-79.4l-6-122.9h239.9c12.1 0 23.9-3.2 34.3-9.3 40.4-23.5 65.5-66.1 65.5-111 0-28.3-9.3-55.5-26.1-77.7zM184 456V172h81v284h-81z m627.2 160.4H496.8l9.6 198.4c.6 11.9-4.7 23.1-14.6 30.5-6.1 4.5-13.6 6.8-21.1 6.7a44.28 44.28 0 0 1-42.2-32.3L329 459.2V172h415.4a56.85 56.85 0 0 1 33.6 51.8c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 9.7-2.3 18.9-6.9 27.3l-13.9 25.4 21.9 19a56.76 56.76 0 0 1 19.6 43c0 19.1-11 37.5-28.8 48.4z"
+                        />
+                      </svg>
+                      {{ reply.oppose || 0 }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- 空状态提示 -->
-          <div v-else class="empty-state">
-            <div class="empty-icon">📭</div>
-            <div class="empty-text">暂无符合条件的回复</div>
-            <div class="empty-hint">试试调整筛选条件</div>
+            <!-- 空状态提示 -->
+            <div v-else class="empty-state">
+              <div class="empty-icon">📭</div>
+              <div class="empty-text">暂无符合条件的回复</div>
+              <div class="empty-hint">试试调整筛选条件</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 分页 -->
-      <div v-if="totalPages > 1" class="pagination">
-        <button
-          class="page-btn"
-          :disabled="pageIndex <= 1"
-          @click="changePage(pageIndex - 1)"
-        >
-          上一页
-        </button>
-
-        <template v-for="page in pageNumbers" :key="page">
+        <!-- 分页 -->
+        <div v-if="totalPages > 1" class="pagination">
           <button
-            v-if="page !== '...'"
-            class="page-num"
-            :class="{ active: pageIndex === page }"
-            @click="changePage(page)"
+            class="page-btn"
+            :disabled="pageIndex <= 1"
+            @click="changePage(pageIndex - 1)"
           >
-            {{ page }}
+            上一页
           </button>
-          <span v-else class="ellipsis">...</span>
-        </template>
 
-        <button
-          class="page-btn"
-          :disabled="pageIndex >= totalPages"
-          @click="changePage(pageIndex + 1, true)"
-        >
-          下一页
-        </button>
-      </div>
-    </main>
+          <template v-for="page in pageNumbers" :key="page">
+            <button
+              v-if="page !== '...'"
+              class="page-num"
+              :class="{ active: pageIndex === page }"
+              @click="changePage(page)"
+            >
+              {{ page }}
+            </button>
+            <span v-else class="ellipsis">...</span>
+          </template>
+
+          <button
+            class="page-btn"
+            :disabled="pageIndex >= totalPages"
+            @click="changePage(pageIndex + 1, true)"
+          >
+            下一页
+          </button>
+        </div>
+      </main>
+    </PullRefresh>
 
     <AppFooter />
   </div>
@@ -230,6 +232,7 @@ import { getTopicDetail } from "@/api/topic";
 import AppHeader from "@/components/AppHeader.vue";
 import AppFooter from "@/components/AppFooter.vue";
 import UserAvatar from "@/components/UserAvatar.vue";
+import PullRefresh from "@/components/PullRefresh.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -541,6 +544,11 @@ const formatViews = (views) => {
     return (num / 1000).toFixed(1) + "K";
   }
   return num.toString();
+};
+
+// 下拉刷新处理
+const handleRefresh = async () => {
+  await fetchTopicDetail(false);
 };
 
 onMounted(() => {
