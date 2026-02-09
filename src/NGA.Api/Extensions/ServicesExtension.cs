@@ -309,6 +309,7 @@ namespace NGA.Api.Extensions
                 op.RequestPathLoggingMode = IncomingPathLoggingMode.Formatted;
                 op.ExcludePathStartsWith.Add("/scalar");
                 op.ExcludePathStartsWith.Add("/openapi");
+                op.ExcludePathStartsWith.Add("/api/health");
                 op.IncludeUnmatchedRoutes = true;
             });
             return services;
