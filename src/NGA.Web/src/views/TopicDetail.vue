@@ -2,15 +2,15 @@
   <div class="topic-detail-page">
     <AppHeader />
 
+    <!-- 错误提示 - 移到最外层 -->
+    <div v-if="errorMessage" class="error-toast">
+      <span class="error-icon">⚠️</span>
+      <span class="error-text">{{ errorMessage }}</span>
+      <button class="error-close" @click="errorMessage = ''">×</button>
+    </div>
+
     <PullRefresh :onRefresh="handleRefresh">
       <main class="main-content">
-        <!-- 错误提示 -->
-        <div v-if="errorMessage" class="error-toast">
-          <span class="error-icon">⚠️</span>
-          <span class="error-text">{{ errorMessage }}</span>
-          <button class="error-close" @click="errorMessage = ''">×</button>
-        </div>
-
         <div class="breadcrumb">
           <router-link :to="getListUrl()">首页</router-link>
           <span class="separator">/</span>
@@ -588,7 +588,7 @@ onMounted(() => {
 
 .error-toast {
   position: fixed;
-  top: 80px;
+  top: 84px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -599,7 +599,7 @@ onMounted(() => {
   color: #ffffff;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(255, 107, 107, 0.4);
-  z-index: 1000;
+  z-index: 10001;
   animation: slideDown 0.3s ease-out;
   max-width: 90%;
   word-break: break-word;
