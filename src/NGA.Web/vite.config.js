@@ -9,6 +9,20 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src')
         }
     },
+    build: {
+        // 启用文件名 hash，确保文件更新后浏览器获取新版本
+        rollupOptions: {
+            output: {
+                // JS 文件名带 hash
+                entryFileNames: 'assets/[name].[hash].js',
+                chunkFileNames: 'assets/[name].[hash].js',
+                // CSS 文件名带 hash
+                assetFileNames: 'assets/[name].[hash].[ext]'
+            }
+        },
+        // 生成 manifest.json 用于版本跟踪
+        manifest: true
+    },
     server: {
         port: 5173,
         proxy: {
