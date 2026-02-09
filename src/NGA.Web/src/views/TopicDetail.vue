@@ -249,7 +249,6 @@ const replyCount = ref(0);
 const onlyAuthor = ref(route.query.onlyAuthor === "true");
 const onlyImage = ref(route.query.onlyImage === "true");
 const errorMessage = ref("");
-const shouldAppend = ref(false); // 追踪是否应该追加加载
 
 const totalPages = computed(() => {
   return Math.ceil(replyCount.value / pageSize.value);
@@ -331,7 +330,6 @@ const getListUrl = () => {
 const toggleOnlyAuthor = () => {
   const mainContent = replies.value.find((r) => r.sort === 0);
   replies.value = mainContent ? [mainContent] : [];
-  shouldAppend.value = false;
   router.push({
     path: `/topic/${tid.value}`,
     query: {
@@ -345,7 +343,6 @@ const toggleOnlyAuthor = () => {
 const toggleOnlyImage = () => {
   const mainContent = replies.value.find((r) => r.sort === 0);
   replies.value = mainContent ? [mainContent] : [];
-  shouldAppend.value = false;
   router.push({
     path: `/topic/${tid.value}`,
     query: {
@@ -459,6 +456,28 @@ const fetchTopicDetail = async (append = false) => {
   }
 };
 
+// 监听主题 ID 变化（切换到新主题时重置状态）
+watch(
+  () => route.params.tid,
+  (newTid, oldTid) => {
+    if (newTid !== oldTid) {
+      // 切换到新主题，重置所有状态
+      tid.value = newTid;
+      replies.value = [];
+      users.value = {};
+      quoteReplies.value = {};
+      quoteUsers.value = {};
+      pageIndex.value = Number(route.query.page) || 1;
+      onlyAuthor.value = route.query.onlyAuthor === "true";
+      onlyImage.value = route.query.onlyImage === "true";
+      errorMessage.value = "";
+
+      // 加载新主题
+      fetchTopicDetail(false);
+    }
+  },
+);
+
 // 监听路由变化，自动同步参数和刷新
 watch(
   () => [route.query.page, route.query.onlyAuthor, route.query.onlyImage],
@@ -467,6 +486,7 @@ watch(
     [oldPage, oldOnlyAuthor, oldOnlyImage],
   ) => {
     const newPageNum = Number(newPage) || 1;
+    const oldPageNum = Number(oldPage) || 1;
 
     // 检测筛选条件是否改变
     const filterChanged =
@@ -476,42 +496,31 @@ watch(
       // 筛选条件改变时，清空列表并重置
       const mainContent = replies.value.find((r) => r.sort === 0);
       replies.value = mainContent ? [mainContent] : [];
-      shouldAppend.value = false;
     }
 
     pageIndex.value = newPageNum;
     onlyAuthor.value = newOnlyAuthor === "true";
     onlyImage.value = newOnlyImage === "true";
 
-    // 使用 shouldAppend 标志决定加载模式
-    fetchTopicDetail(shouldAppend.value);
-
-    // 重置标志
-    if (shouldAppend.value) {
-      shouldAppend.value = false;
-    }
+    // 判断是否追加：只有从 X 到 X+1 才追加
+    const shouldAppend = !filterChanged && newPageNum === oldPageNum + 1;
+    fetchTopicDetail(shouldAppend);
   },
 );
 
-const changePage = (page, isNextButton = false) => {
-  // 判断是否是连续的下一页（无论是点击按钮还是点击页码）
-  if (page === pageIndex.value + 1) {
-    shouldAppend.value = true; // 连续下一页追加模式
-  } else {
-    shouldAppend.value = false; // 其他情况（上一页、跨页跳转）都刷新
-  }
-
+const changePage = (page) => {
   router.push({
     path: `/topic/${tid.value}`,
     query: {
       page,
-      onlyAuthor: onlyAuthor.value,
-      onlyImage: onlyImage.value,
+      onlyAuthor: onlyAuthor.value || undefined,
+      onlyImage: onlyImage.value || undefined,
     },
   });
 
-  // 只有非追加模式（刷新）才滚动到顶部
-  if (!shouldAppend.value) {
+  // 只有下一页才不滚动到顶部
+  const isNextPage = page === pageIndex.value + 1;
+  if (!isNextPage) {
     window.scrollTo(0, 0);
   }
 };
@@ -1163,11 +1172,16 @@ onMounted(() => {
   }
 
   .reply-item {
-    padding: 12px 16px;
+    padding: 12px 12px;
+    gap: 8px;
   }
 
   .reply-number {
-    display: none;
+    width: 32px;
+    height: 20px;
+    line-height: 20px;
+    font-size: 11px;
+    border-radius: 10px;
   }
 }
 </style>
