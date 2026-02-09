@@ -222,7 +222,9 @@ const handleMouseDown = (e) => {
   border-radius: 0 0 20px 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
-  transition: opacity 0.3s, transform 0.3s;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
 }
 
 .indicator-content {
@@ -287,11 +289,11 @@ const handleMouseDown = (e) => {
     max-width: 90vw;
     padding: 8px 16px;
   }
-  
+
   .indicator-content {
     min-width: 120px;
   }
-  
+
   .indicator-text {
     font-size: 13px;
   }
