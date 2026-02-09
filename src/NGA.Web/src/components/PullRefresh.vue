@@ -212,24 +212,26 @@ const handleMouseDown = (e) => {
 .pull-refresh-indicator {
   position: fixed;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   z-index: 999;
   padding: 10px 20px;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 0 0 20px 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
-  transition:
-    opacity 0.3s,
-    transform 0.3s;
+  transition: opacity 0.3s, transform 0.3s;
 }
 
 .indicator-content {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   color: #4a90e2;
+  min-width: 140px;
 }
 
 .indicator-content.refreshing .spinner {
@@ -239,6 +241,7 @@ const handleMouseDown = (e) => {
 .refresh-icon {
   transition: transform 0.3s;
   color: #4a90e2;
+  flex-shrink: 0;
 }
 
 .refresh-icon.flip {
@@ -249,6 +252,7 @@ const handleMouseDown = (e) => {
   width: 24px;
   height: 24px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .spinner-circle {
@@ -275,5 +279,21 @@ const handleMouseDown = (e) => {
 .pull-refresh-content {
   transition: transform 0.3s ease-out;
   will-change: transform;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .pull-refresh-indicator {
+    max-width: 90vw;
+    padding: 8px 16px;
+  }
+  
+  .indicator-content {
+    min-width: 120px;
+  }
+  
+  .indicator-text {
+    font-size: 13px;
+  }
 }
 </style>
