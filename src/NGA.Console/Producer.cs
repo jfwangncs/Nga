@@ -47,7 +47,7 @@ namespace NGA.Console
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var fids = JsonConvert.DeserializeObject<List<string>>(Environment.GetEnvironmentVariable("FID") ?? "");
-            fids ??= new List<string>() { "-7", "472" };
+            fids ??= new List<string>() { "-7", "-7955747" };
             _token = await _redisService.GetAsync<NGBToken>("Token");
 
             int startPage = 1;
