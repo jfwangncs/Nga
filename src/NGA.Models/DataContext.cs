@@ -25,8 +25,8 @@ namespace NGA.Models
             if (string.IsNullOrEmpty(connectionString))
                 throw new InvalidOperationException("The connection string was not set in the 'EFConString' environment variable.");
             var optionsBuilder = new DbContextOptionsBuilder<DataContext>();
-          
-            optionsBuilder.UseMySql(connectionString,ServerVersion.AutoDetect(connectionString));
+
+            optionsBuilder.UseNpgsql(connectionString);
             return new DataContext(optionsBuilder.Options);
         }
     }
