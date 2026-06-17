@@ -237,7 +237,7 @@ namespace NGA.Console
                     if (reptileNum != result.Item1 && result.Item1 != -1)
                     {
                         reptileNum = topic.ReptileNum = result.Item1;
-                        topic.LastReplyTime = DateTime.Now;
+                        topic.LastReplyTime = DateTime.UtcNow;
                         await _topicService.UpdateAsync(topic);
                     }
                     if (result.Item2)
@@ -414,7 +414,7 @@ namespace NGA.Console
                     if (userinfo == null || userinfo.Uid <= 0)
                         return;
                     var user = await _userService.GetOneAsync(q => q.Uid == userinfo.Uid.ToString());
-                    if (user == null || (DateTime.Now - user.UpdatedTime).Days > 7)
+                    if (user == null || (DateTime.UtcNow - user.UpdatedTime).Days > 7)
                     {
                         if (user == null)
                             user = new User();
